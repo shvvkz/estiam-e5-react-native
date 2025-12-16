@@ -1,0 +1,7 @@
+node_modules/
+mock_api/
+.expo/
+android/
+ios/
+.env
+expo-env.d.ts
