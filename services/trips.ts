@@ -1,6 +1,11 @@
 import { auth } from "./auth";
 import { config } from "@/utils/env";
 
+export interface TripLocation {
+  lat: number;
+  lng: number;
+}
+
 export interface Trip {
   id: string;
   title: string;
@@ -10,6 +15,7 @@ export interface Trip {
   description?: string;
   image?: string;
   photos: string[];
+  location: TripLocation;
 }
 
 export interface CreateTripPayload {
@@ -20,6 +26,7 @@ export interface CreateTripPayload {
   description?: string;
   image?: string;
   photos?: string[];
+  location: TripLocation;
 }
 
 export const tripsService = {

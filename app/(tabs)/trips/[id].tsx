@@ -88,7 +88,9 @@ export default function TripDetailsScreen() {
   const goBack = () => {
     if (from === "trips") {
       router.replace({ pathname: "/(tabs)/trips" });
-    } else {
+    } else if (from === "map") {
+      router.replace({ pathname: "/(tabs)/trips/map" });
+    } else{
       router.replace({ pathname: "/" });
     }
   };

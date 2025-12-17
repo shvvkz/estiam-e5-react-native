@@ -14,12 +14,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 
 import { tripsService } from "@/services/trips";
 import { favoritesService } from "@/services/favorites";
-
-export const IMAGES_SOURCES = {
-  paris: require('@/assets/images/paris.jpeg'),
-  tokyo: require('@/assets/images/tokyo.jpeg'),
-  bali: require('@/assets/images/bali.jpeg'),
-};
+import { IMAGES_SOURCES } from "@/app/(tabs)/index";
 
 interface Trip {
   id: string;
@@ -212,7 +207,14 @@ export default function TripsScreen() {
 
       {/* FAB */}
       <TouchableOpacity
-        style={styles.fabButton}
+        style={[styles.fabButton, styles.fabLeft]}
+        onPress={() => router.push("/trips/map")}
+      >
+        <Ionicons name="map-outline" size={26} color="#fff" />
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.fabButton, styles.fabRight]}
         onPress={() => router.push("/modal/add-trip")}
       >
         <Ionicons name="add" size={28} color="white" />
@@ -295,8 +297,7 @@ const styles = StyleSheet.create({
 
   fabButton: {
     position: "absolute",
-    bottom: 80,
-    right: 24,
+    bottom: 20,
     width: 56,
     height: 56,
     backgroundColor: "#a855f7",
@@ -304,5 +305,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     elevation: 6,
+  },
+  fabRight: {
+    right: 24,
+  },
+  fabLeft: {
+    right: 334,
   },
 });

@@ -2,6 +2,11 @@ import { config } from "@/utils/env";
 import { OFFLINE } from "./offline";
 import { auth } from './auth';
 
+export interface TripLocation {
+  lat: number;
+  lng: number;
+}
+
 interface Trip {
     title: string,
     destination: string,
@@ -10,6 +15,7 @@ interface Trip {
     description: string,
     image?: string,
     photos?: string[]
+    location: TripLocation
 }
 
 
