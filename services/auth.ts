@@ -1,6 +1,5 @@
 import { config } from '@/utils/env';
-import * as SecureStore from 'expo-secure-store'
-import { use } from 'react';
+import * as SecureStore from 'expo-secure-store';
 
 export interface User {
     id: string;
@@ -18,19 +17,29 @@ export interface AuthTokens {
 
 export interface LoginCredentials {
     email: string;
-    password: string
+    password: string;
 }
 
 export interface RegisterData extends LoginCredentials {
-    name: string
+    name: string;
+}
+
+export interface JWTPayload {
+    exp: number;
+    iat?: number;
+    sub?: string;
+    [key: string]: unknown;
 }
 
 const KEYS = {
     ACCESS_TOKEN: 'auth_access_token',
     REFRESH_TOKEN: 'auth_refresh_token',
     USER_DATA: 'auth_user_data',
-    TOKEN_EXPIRY: 'auth_token_expiry'
-}
+    TOKEN_EXPIRY: 'auth_token_expiry',
+};
+
+const log = __DEV__ ? console.log : () => {};
+const warn = __DEV__ ? console.warn : () => {};
 
 const secureStorage = {
     async set(key: string, value: string): Promise<void> {
@@ -41,92 +50,58 @@ const secureStorage = {
     },
     async remove(key: string): Promise<void> {
         await SecureStore.deleteItemAsync(key);
-    }
-}
+    },
+};
 
+export const decodeJWT = (token: string): JWTPayload => {
+    if (!token) throw new Error('JWT missing');
 
-export const decodeJWT = (token: string): any => {
+    const parts = token.split('.');
+    if (parts.length !== 3) throw new Error('Invalid JWT format');
+
     try {
-        const base64Url = token.split('.')[1];
-        if (!base64Url) return null;
+        const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+        const payload = JSON.parse(atob(base64));
 
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const json = decodeURIComponent(
-            atob(base64)
-                .split('')
-                .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-                .join('')
-        );
-        return JSON.parse(json);
+        if (typeof payload.exp !== 'number') {
+            throw new Error('JWT exp missing');
+        }
+
+        return payload;
     } catch {
-        return null;
+        throw new Error('Failed to decode JWT');
     }
 };
 
 export const isTokenExpired = (token: string): boolean => {
-    if (!token || typeof token !== 'string') {
+    try {
+        const { exp } = decodeJWT(token);
+        return Date.now() >= exp * 1000 - 60_000;
+    } catch {
         return true;
     }
-
-    const decoded = decodeJWT(token);
-
-    if (!decoded) {
-        return true;
-    }
-
-    if (!decoded.exp) {
-        return true;
-    }
-
-    const isExpired = Date.now() >= decoded.exp * 1000 - 60000; // 60s margin
-    if (isExpired) {
-        console.log('[AUTH] Token expired', {
-            exp: decoded.exp,
-            expDate: new Date(decoded.exp * 1000).toISOString(),
-            now: new Date().toISOString()
-        })
-    }
-    return isExpired;
-}
+};
 
 let refreshPromise: Promise<AuthTokens | null> | null = null;
 
-
-// Auth service 
 export const auth = {
+
     async saveTokens(tokens: AuthTokens): Promise<void> {
         await Promise.all([
             secureStorage.set(KEYS.ACCESS_TOKEN, tokens.accessToken),
             secureStorage.set(KEYS.REFRESH_TOKEN, tokens.refreshToken),
             secureStorage.set(KEYS.TOKEN_EXPIRY, tokens.expiresAt.toString()),
-        ])
+        ]);
     },
+
     async getTokens(): Promise<AuthTokens | null> {
         const [accessToken, refreshToken, expiresAt] = await Promise.all([
             secureStorage.get(KEYS.ACCESS_TOKEN),
             secureStorage.get(KEYS.REFRESH_TOKEN),
-            secureStorage.get(KEYS.TOKEN_EXPIRY)
+            secureStorage.get(KEYS.TOKEN_EXPIRY),
         ]);
 
-        console.log('[AUTH] Getting tokens :', {
-            accessToken: accessToken,
-            hasAccessToken: !!accessToken,
-            hasRefreshtoken: !!refreshToken,
-            expiresAt: expiresAt ? new Date(parseInt(expiresAt, 10)).toISOString() : 'none'
-        })
-
-        if (!accessToken || !refreshToken) {
-            console.log('[AUTH] Missing tokens')
-            return null;
-        }
-
-
-        if (accessToken === 'SIMULATOR_MOCK_TOKEN' || accessToken.startsWith('mock-')) {
-            console.log('[AUTH] Found mock/invalid token, clearing...');
-            await this.clearTokens();
-            return null;
-        }
-
+        if (!accessToken || !refreshToken) return null;
 
         return {
             accessToken,
@@ -134,21 +109,20 @@ export const auth = {
             expiresAt: expiresAt ? parseInt(expiresAt, 10) : 0,
         };
     },
+
     async clearTokens(): Promise<void> {
         await Promise.all([
             secureStorage.remove(KEYS.ACCESS_TOKEN),
             secureStorage.remove(KEYS.REFRESH_TOKEN),
-            secureStorage.remove(KEYS.TOKEN_EXPIRY)
+            secureStorage.remove(KEYS.TOKEN_EXPIRY),
         ]);
     },
-
-    // User
 
     async saveUser(user: User): Promise<void> {
         await secureStorage.set(KEYS.USER_DATA, JSON.stringify(user));
     },
-    async getUser(): Promise<User | null> {
 
+    async getUser(): Promise<User | null> {
         const data = await secureStorage.get(KEYS.USER_DATA);
         return data ? JSON.parse(data) : null;
     },
@@ -157,111 +131,60 @@ export const auth = {
         await secureStorage.remove(KEYS.USER_DATA);
     },
 
+    async login(
+        credentials: LoginCredentials
+    ): Promise<{ user: User; tokens: AuthTokens }> {
+        const response = await fetch(`${config.mockBackendUrl}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(credentials),
+        });
 
-    // Auth operations
-
-    async login(credentials: LoginCredentials): Promise<{ user: User; tokens: AuthTokens }> {
-        const url = `${config.mockBackendUrl}/auth/login`;
-
-        try {
-
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(credentials),
-            });
-
-            console.log('Response status: ', response.status, response.statusText);
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => {
-                    return {};
-                });
-
-                const errorMessage = errorData.error || errorData.message || `Login failed (${response.status})`;
-
-                throw new Error(errorMessage);
-            }
-
-            const data = await response.json();
-
-            if (!data.accessToken || !data.user) {
-                throw new Error('Invalid response from server');
-            }
-
-            const tokens: AuthTokens = {
-                accessToken: data.accessToken,
-                refreshToken: data.refreshToken || data.accessToken,
-                expiresAt: Date.now() + (data.expiresIn || 3600) * 1000,
-            };
-
-            const user: User = data.user;
-
-            await this.saveTokens(tokens);
-            await this.saveUser(user);
-
-            return {
-                user,
-                tokens
-            };
-
-        } catch (error) {
-            if (error instanceof Error) {
-                throw error;
-            }
-            throw new Error('Network error: could not connect to server');
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error || err.message || 'Login failed');
         }
+
+        const data = await response.json();
+
+        const tokens: AuthTokens = {
+            accessToken: data.accessToken,
+            refreshToken: data.refreshToken || data.accessToken,
+            expiresAt: Date.now() + (data.expiresIn || 3600) * 1000,
+        };
+
+        await this.saveTokens(tokens);
+        await this.saveUser(data.user);
+
+        return { user: data.user, tokens };
     },
-    async register(data: RegisterData): Promise<{ user: User; tokens: AuthTokens }> {
-        const url = `${config.mockBackendUrl}/auth/register`;
-        try {
 
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data),
-            });
+    async register(
+        data: RegisterData
+    ): Promise<{ user: User; tokens: AuthTokens }> {
+        const response = await fetch(`${config.mockBackendUrl}/auth/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
 
-            if (!response.ok) {
-                const errorData = await response.json().catch((err) => {
-                    console.error('❌ [AUTH] Failed to parse error response:', err);
-                    return {};
-                }); const errorMessage = errorData.error || errorData.message || `Registration failed (${response.status})`;
-                throw new Error(errorMessage);
-            }
-
-            const responseData = await response.json();
-            if (!responseData.accessToken || !responseData.user) {
-                console.error('❌ [AUTH] Invalid response structure:', responseData);
-                throw new Error('Invalid response from server');
-            }
-
-            const tokens: AuthTokens = {
-                accessToken: responseData.accessToken,
-                refreshToken: responseData.refreshToken || responseData.accessToken,
-                expiresAt: Date.now() + (responseData.expiresIn || 3600) * 1000,
-            };
-
-            const user: User = responseData.user;
-
-            await this.saveTokens(tokens);
-            await this.saveUser(user);
-            console.log('💾 [AUTH] Tokens and user saved successfully');
-
-            return { user, tokens };
-
-
-        } catch (error) {
-            if (error instanceof TypeError && error.message.includes('fetch')) {
-                console.error('❌ [AUTH] Network error - Backend might be down or URL incorrect');
-                throw new Error(`Cannot connect to server at ${url}. Make sure the backend is running.`);
-            }
-            if (error instanceof Error) {
-                throw error;
-            }
-            throw new Error('Network error: Could not connect to server');
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error || err.message || 'Register failed');
         }
 
+        const res = await response.json();
+
+        const tokens: AuthTokens = {
+            accessToken: res.accessToken,
+            refreshToken: res.refreshToken || res.accessToken,
+            expiresAt: Date.now() + (res.expiresIn || 3600) * 1000,
+        };
+
+        await this.saveTokens(tokens);
+        await this.saveUser(res.user);
+
+        return { user: res.user, tokens };
     },
 
     async logout(): Promise<void> {
@@ -273,16 +196,17 @@ export const auth = {
                     headers: { Authorization: `Bearer ${tokens.accessToken}` },
                 });
             }
-        } catch (error) {
-            console.warn('Logout API Failed');
+        } catch {
+            warn('[AUTH] Logout API failed');
         }
 
-        await Promise.all([this.clearTokens, this.clearUser()]);
-
+        await Promise.all([this.clearTokens(), this.clearUser()]);
     },
+
+
     async refreshTokens(): Promise<AuthTokens | null> {
         if (refreshPromise) return refreshPromise;
-        refreshPromise = this._doRefresh();
+        refreshPromise = this._doRefresh().catch(() => null);
 
         try {
             return await refreshPromise;
@@ -290,85 +214,65 @@ export const auth = {
             refreshPromise = null;
         }
     },
-    async _doRefresh(): Promise<AuthTokens | null> {
 
+    async _doRefresh(): Promise<AuthTokens> {
         const tokens = await this.getTokens();
+        if (!tokens?.refreshToken) throw new Error('No refresh token');
 
-        if (!tokens?.refreshToken) return null;
-        try {
-            const response = await fetch(`${config.mockBackendUrl}/auth/refresh`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ refreshToken: tokens.refreshToken }),
-            });
+        const response = await fetch(`${config.mockBackendUrl}/auth/refresh`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refreshToken: tokens.refreshToken }),
+        });
 
-            if (!response.ok) {
-                await this.logout();
-                return null;
-            }
-
-            const data = await response.json();
-
-            const newTokens: AuthTokens = {
-                accessToken: data.accessToken || data.token,
-                refreshToken: data.refreshToken || tokens.refreshToken,
-                expiresAt: Date.now() + (data.expiresIn || 3600) * 1000,
-            }
-
-            await this.saveTokens(newTokens);
-            return newTokens;
-
-        } catch (error) {
-            return null;
+        if (!response.ok) {
+            await this.clearTokens();
+            await this.clearUser();
+            throw new Error('Refresh failed');
         }
+
+        const data = await response.json();
+
+        const newTokens: AuthTokens = {
+            accessToken: data.accessToken || data.token,
+            refreshToken: data.refreshToken || tokens.refreshToken,
+            expiresAt: Date.now() + (data.expiresIn || 3600) * 1000,
+        };
+
+        await this.saveTokens(newTokens);
+        return newTokens;
     },
-    async getAuthState(): Promise<{ user: User | null; tokens: AuthTokens | null; isAuthenticated: boolean }> {
 
+
+    async getAuthState(): Promise<{
+        user: User | null;
+        tokens: AuthTokens | null;
+        isAuthenticated: boolean;
+    }> {
         try {
-            const [user, tokens] = await Promise.all([this.getUser(), this.getTokens()]);
+            const [user, tokens] = await Promise.all([
+                this.getUser(),
+                this.getTokens(),
+            ]);
 
-            if (!user || !tokens || !tokens.accessToken) {
+            if (!user || !tokens) {
                 return { user: null, tokens: null, isAuthenticated: false };
             }
 
-            const expired = isTokenExpired(tokens.accessToken);
-
-            if (expired) {
-                const newTokens = await this.refreshTokens();
-                if (!newTokens) {
+            if (isTokenExpired(tokens.accessToken)) {
+                const refreshed = await this.refreshTokens();
+                if (!refreshed) {
                     await this.clearTokens();
                     await this.clearUser();
                     return { user: null, tokens: null, isAuthenticated: false };
                 }
-
-                return { user, tokens: newTokens, isAuthenticated: true };
-
+                return { user, tokens: refreshed, isAuthenticated: true };
             }
 
             return { user, tokens, isAuthenticated: true };
-
-        } catch (error) {
+        } catch {
             return { user: null, tokens: null, isAuthenticated: false };
-
         }
-    },
-    async isAuthenticated(): Promise<boolean> {
-        const tokens = await this.getTokens();
-        if (!tokens || !tokens.accessToken) {
-            return false;
-        }
-
-        if (isTokenExpired(tokens.accessToken)) {
-            const newTokens = await this.refreshTokens();
-            if (!newTokens) {
-                await this.clearTokens();
-                await this.clearUser();
-                return false;
-            }
-            return true;
-        }
-
-        return true;
     },
 
     async fetch(url: string, options: RequestInit = {}): Promise<Response> {
@@ -377,11 +281,7 @@ export const auth = {
 
         if (isTokenExpired(tokens.accessToken)) {
             const refreshed = await this.refreshTokens();
-            if (!refreshed) {
-                await this.clearTokens();
-                await this.clearUser();
-                throw new Error('Session expired');
-            }
+            if (!refreshed) throw new Error('Session expired');
             tokens = refreshed;
         }
 
@@ -395,11 +295,7 @@ export const auth = {
 
         if (response.status === 401) {
             const refreshed = await this.refreshTokens();
-            if (!refreshed) {
-                await this.clearTokens();
-                await this.clearUser();
-                throw new Error('Session expired');
-            }
+            if (!refreshed) throw new Error('Session expired');
 
             response = await fetch(url, {
                 ...options,
@@ -411,6 +307,5 @@ export const auth = {
         }
 
         return response;
-    }
-
-}
+    },
+};

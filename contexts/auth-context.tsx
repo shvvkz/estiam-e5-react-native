@@ -1,13 +1,26 @@
-import { auth, LoginCredentials, RegisterData, User } from "@/services/auth";
-import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from "react";
+import {
+    auth,
+    LoginCredentials,
+    RegisterData,
+    User,
+    AuthTokens,
+} from '@/services/auth';
+import {
+    createContext,
+    ReactNode,
+    useCallback,
+    useContext,
+    useEffect,
+    useState,
+} from 'react';
 
 interface AuthContextType {
     user: User | null;
     isLoading: boolean;
     isAuthenticated: boolean;
     error: string | null;
-    login: (credentials: LoginCredentials) => Promise<{ user: User, tokens: any }>;
-    register: (data: RegisterData) => Promise<{ user: User, tokens: any }>;
+    login: (credentials: LoginCredentials) => Promise<{ user: User; tokens: AuthTokens }>;
+    register: (data: RegisterData) => Promise<{ user: User; tokens: AuthTokens }>;
     logout: () => Promise<void>;
     refreshAuth: () => Promise<void>;
 }
@@ -20,18 +33,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-
     const checkAuth = useCallback(async () => {
         try {
             setIsLoading(true);
-            setError(null);
             const state = await auth.getAuthState();
             setUser(state.user);
             setIsAuthenticated(state.isAuthenticated);
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Auth check failed');
-            setIsAuthenticated(false);
             setUser(null);
+            setIsAuthenticated(false);
+            setError(err instanceof Error ? err.message : 'Auth error');
         } finally {
             setIsLoading(false);
         }
@@ -39,67 +50,50 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     useEffect(() => {
         checkAuth();
-    }, []);
+    }, [checkAuth]);
 
     const login = useCallback(async (credentials: LoginCredentials) => {
+        setIsLoading(true);
+        setError(null);
+
         try {
-            setIsLoading(true);
-            setError(null);
-            const { user, tokens } = await auth.login(credentials);
-            await new Promise(resolve => setTimeout(resolve, 100));
-            const state = await auth.getAuthState();
-
-            setUser(state.user);
-            setIsAuthenticated(state.isAuthenticated);
-
-            return { user, tokens };
-
+            const result = await auth.login(credentials);
+            await checkAuth();
+            return result;
         } catch (err) {
-            const message = err instanceof Error ? err.message : 'Login failed';
-            setError(message);
-            setIsAuthenticated(false);
             setUser(null);
+            setIsAuthenticated(false);
+            setError(err instanceof Error ? err.message : 'Login failed');
             throw err;
         } finally {
             setIsLoading(false);
         }
-
-    }, []);
+    }, [checkAuth]);
 
     const register = useCallback(async (data: RegisterData) => {
+        setIsLoading(true);
+        setError(null);
+
         try {
-            setIsLoading(true);
-            setError(null);
-            const { user, tokens } = await auth.register(data);
-            // Attendre un peu pour que SecureStore sauvegarde
-            await new Promise(resolve => setTimeout(resolve, 100));
-            // Vérifier l'état après sauvegarde
-            const state = await auth.getAuthState();
-            setUser(state.user);
-            setIsAuthenticated(state.isAuthenticated);
-            console.log('✅ [useAuth] Register completed, auth state:', state.isAuthenticated);
-            return { user, tokens };
+            const result = await auth.register(data);
+            await checkAuth();
+            return result;
         } catch (err) {
-            const message = err instanceof Error ? err.message : 'Registration failed';
-            setError(message);
-            setIsAuthenticated(false);
             setUser(null);
+            setIsAuthenticated(false);
+            setError(err instanceof Error ? err.message : 'Register failed');
             throw err;
         } finally {
             setIsLoading(false);
         }
-    }, []);
+    }, [checkAuth]);
 
     const logout = useCallback(async () => {
+        setIsLoading(true);
         try {
-            setIsLoading(true);
-            setError(null);
             await auth.logout();
             setUser(null);
             setIsAuthenticated(false);
-        } catch (err) {
-            const message = err instanceof Error ? err.message : 'Logout failed';
-            setError(message);
         } finally {
             setIsLoading(false);
         }
@@ -107,7 +101,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const refreshAuth = useCallback(async () => {
         await checkAuth();
-    }, []);
+    }, [checkAuth]);
 
     return (
         <AuthContext.Provider
@@ -119,18 +113,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 login,
                 register,
                 logout,
-                refreshAuth
+                refreshAuth,
             }}
         >
             {children}
         </AuthContext.Provider>
     );
-}
+};
 
 export const useAuth = () => {
     const context = useContext(AuthContext);
-    if (context === undefined) {
+    if (!context) {
         throw new Error('useAuth must be used within an AuthProvider');
     }
     return context;
-}
+};
