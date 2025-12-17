@@ -1,5 +1,5 @@
-import { auth } from './auth';
-import { config } from '@/utils/env';
+import { auth } from "./auth";
+import { config } from "@/utils/env";
 
 export interface Trip {
   id: string;
@@ -30,17 +30,12 @@ export interface HomeData {
   activities: HomeActivity[];
 }
 
-const parseDate = (date: string): Date => {
-  const [day, month, year] = date.split('/');
-  return new Date(`${year}-${month}-${day}`);
-};
-
 export const homeService = {
   async getHomeData(): Promise<HomeData> {
     const response = await auth.fetch(`${config.mockBackendUrl}/trips`);
 
     if (!response.ok) {
-      throw new Error('Failed to load trips');
+      throw new Error("Failed to load trips");
     }
 
     const trips: Trip[] = await response.json();
@@ -52,27 +47,21 @@ export const homeService = {
     };
 
     const upcomingTrips = trips
-      .filter(t => {
-        const start = parseDate(t.startDate);
-        return start.getTime() > Date.now();
-      })
-      .sort((a, b) => {
-        return (
-          parseDate(a.startDate).getTime() -
-          parseDate(b.startDate).getTime()
-        );
-      })
+      .filter(t => new Date(t.startDate).getTime() > Date.now())
+      .sort(
+        (a, b) =>
+          new Date(a.startDate).getTime() -
+          new Date(b.startDate).getTime()
+      )
       .slice(0, 3);
 
     const activities: HomeActivity[] = trips
-      .slice()
-      .reverse()
       .slice(0, 5)
       .map(trip => ({
         id: trip.id,
-        icon: 'airplane-outline',
+        icon: "airplane-outline",
         text: `Trip created: ${trip.title}`,
-        time: parseDate(trip.startDate).toLocaleDateString(),
+        time: new Date(trip.startDate).toLocaleDateString("fr-FR"),
       }));
 
     return {

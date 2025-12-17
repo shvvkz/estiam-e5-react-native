@@ -4,198 +4,167 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    Image,
     ScrollView,
     StyleSheet,
-    Platform,
+    Alert,
     Linking,
-    Alert
 } from "react-native";
-import { IconSymbol } from "@/components/ui/icon-symbol";
-import { ThemedView } from "@/components/themed-view";
-import { Fonts } from "@/constants/theme";
-import Ionicons from "@expo/vector-icons/Ionicons";
-import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import * as ImagePicker from 'expo-image-picker';
-import * as Location from 'expo-location';
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { LinearGradient } from "expo-linear-gradient";
+import * as ImagePicker from "expo-image-picker";
+import * as Location from "expo-location";
+import { Calendar } from "react-native-calendars";
+import { Image } from "expo-image";
+import { useRouter } from "expo-router";
 import { API } from "@/services/api";
 
 export default function AddTripModal() {
-
     const router = useRouter();
+
     const [tripTitle, setTripTitle] = useState("");
     const [destination, setDestination] = useState("");
-    const [startDate, setStartDate] = useState("");
-    const [endDate, setEndDate] = useState("");
     const [description, setDescription] = useState("");
-    const [uploadProgress, setUploadProgress] = useState<number>(0);
-    const [isUploading, setIsUploading] = useState<boolean>(false);
-    const [selectedImages, setSelectedImages] = useState<Array<string>>([]);
-    const [uploadedPhotos, setuploadedPhotos] = useState<Array<string>>([]);
-    const [coverImage, setcoverImage] = useState<string>("");
 
+    const [startDate, setStartDate] = useState<string | null>(null);
+    const [endDate, setEndDate] = useState<string | null>(null);
+    const [selectingEnd, setSelectingEnd] = useState(false);
 
+    const [selectedImages, setSelectedImages] = useState<string[]>([]);
+    const [isUploading, setIsUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
 
-    const openAppSettings = () => {
-        Linking.openSettings();
-    };
+    const openAppSettings = () => Linking.openSettings();
 
-    // Fonction pour ouvrir les paraamètres de l'application
     const showPermissionAlert = (title: string, message: string) => {
         Alert.alert(title, message, [
-            { text: 'Annuler', style: 'cancel' },
-            { text: 'Ouvrir les paramètres', onPress: openAppSettings },
-        ]
-        );
-    };
-
-    // Fonction pour vérifier si on est sur simulateur
-    const isSimulator = () => {
-        return Platform.OS === 'ios' || Platform.OS === 'android';
-    }
-
-    // Afficher une alerte simulateur
-
-    const showSimulatorAlert = (feature: string) => {
-        Alert.alert('Fonctionnalité non disponible', `La fonctionnalité "${feature}" n'est pas disponible sur un simulateur. Veuillez utiliser un appareil réel pour y accéder.`,
-            [
-                {
-                    text: 'D\'accord ',
-                    onPress: () => console.log('OK'),
-                    style: 'cancel'
-                },
-            ]
-        );
-    }
-
-
-    const pickImage = async () => {
-        try {
-
-            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-            if (status !== 'granted') {
-                showPermissionAlert('Permission Galerie refusée', 'Nous avons besoin de l\'accès à vos photos pour sélectionner des images.');
-                return;
-            }
-            const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ["images"],
-                allowsMultipleSelection: true,
-                quality: 1,
-            });
-
-            if (!result.canceled) {
-                const selectedUris = result.assets.map(asset => asset.uri);
-                setSelectedImages(prevImages => [...prevImages, ...selectedUris]);
-            }
-
-        } catch (error) {
-            console.error("Error picking image: ", error);
-            showSimulatorAlert('Galerie');
-        }
-    };
-
-    const formatDateInput = (value: string) => {
-        const digits = value.replace(/\D/g, '').slice(0, 8);
-
-        if (digits.length <= 2) return digits;
-        if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
-        return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
-    };
-
-
-    const takePhoto = async () => {
-
-        try {
-            const { status } = await ImagePicker.requestCameraPermissionsAsync();
-            if (status !== 'granted') {
-                showPermissionAlert('Permission refusée', 'Nous avons besoin de l\'accès à la caméra pour prendre des photos.');
-                return;
-            }
-
-            const result = await ImagePicker.launchCameraAsync({
-                allowsEditing: true,
-                aspect: [16, 9],
-                quality: 1,
-            });
-
-            if (!result.canceled) {
-                const photoUri = result.assets[0].uri;
-                setSelectedImages(prevImages => [...prevImages, photoUri]);
-                console.log("Photo taken: ", photoUri);
-            }
-
-        } catch (error) {
-            console.log("Error taking photo: ", error);
-            showSimulatorAlert('Camera');
-        }
+            { text: "Annuler", style: "cancel" },
+            { text: "Ouvrir les paramètres", onPress: openAppSettings },
+        ]);
     };
 
     const getLocation = async () => {
-
         try {
-
             const { status } = await Location.requestForegroundPermissionsAsync();
-            if (status !== 'granted') {
-                showPermissionAlert('Permission Localisation refusée', 'Nous avons besoin de l\'accès à votre localisation pour obtenir votre position actuelle.');
+            if (status !== "granted") {
+                showPermissionAlert("Permission refusée", "Accès localisation requis");
                 return;
             }
+
             const location = await Location.getCurrentPositionAsync({});
-            console.log("Current location: ", location);
-
             const address = await Location.reverseGeocodeAsync(location.coords);
+
             if (address.length > 0) {
-
-                const addr = address[0];
-                const city = addr.city || addr.name || '';
-                const country = addr.country || '';
-                const formattedAddress = `${city}${city && country ? ', ' : ''}${country}`.trim();
-
-                setDestination(formattedAddress);
-                console.log("Resolved address: ", formattedAddress);
+                const city = address[0].city || address[0].name || "";
+                const country = address[0].country || "";
+                setDestination(`${city}${city && country ? ", " : ""}${country}`);
             }
-
-        } catch (error) {
-            console.log("Error getting location: ", error);
-            showSimulatorAlert('Localisation');
+        } catch {
+            Alert.alert("Erreur", "Localisation indisponible");
         }
-
-
     };
 
+    const pickImage = async () => {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-    const uploadImages = async (): Promise<{ photos: string[]; coverImage: string }> => {
-        const uploadedPhotos: string[] = [];
-        let coverImage = '';
-
-        if (selectedImages.length === 0) {
-            return { photos: [], coverImage: '' };
+        if (status !== "granted") {
+            showPermissionAlert("Permission refusée", "Accès aux photos requis");
+            return;
         }
 
-        const totalImages = selectedImages.length;
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ["images"],
+            allowsMultipleSelection: true,
+            quality: 1,
+        });
+
+        if (!result.canceled) {
+            setSelectedImages(prev => [
+                ...prev,
+                ...result.assets.map(a => a.uri),
+            ]);
+        }
+    };
+
+    const uploadImages = async () => {
+        const photos: string[] = [];
+        let coverImage = "";
 
         for (let i = 0; i < selectedImages.length; i++) {
-            const imageUri = selectedImages[i];
-            const uploadedUrl = await API.uploadImage(imageUri);
-
-            uploadedPhotos.push(uploadedUrl);
-
-            if (i === 0) {
-                coverImage = uploadedUrl;
-            }
-
-            setUploadProgress(Math.round(((i + 1) / totalImages) * 100));
+            const url = await API.uploadImage(selectedImages[i]);
+            photos.push(url);
+            if (i === 0) coverImage = url;
+            setUploadProgress(Math.round(((i + 1) / selectedImages.length) * 100));
         }
 
-        return { photos: uploadedPhotos, coverImage };
+        return { photos, coverImage };
     };
 
+    const onDayPress = (day: any) => {
+        const date = day.dateString;
+
+        if (!startDate || endDate) {
+            setStartDate(date);
+            setEndDate(null);
+            setSelectingEnd(true);
+            return;
+        }
+
+        if (date < startDate) {
+            setStartDate(date);
+            setEndDate(null);
+            return;
+        }
+
+        setEndDate(date);
+        setSelectingEnd(false);
+    };
+
+    const getMarkedDates = () => {
+        if (!startDate) return {};
+
+        if (!endDate) {
+            return {
+                [startDate]: {
+                    selected: true,
+                    selectedColor: "#a855f7",
+                    textColor: "#fff",
+                },
+            };
+        }
+
+        const marked: any = {};
+        let current = new Date(startDate);
+        const last = new Date(endDate);
+
+        while (current <= last) {
+            const iso = current.toISOString().split("T")[0];
+            marked[iso] = {
+                selected: true,
+                color: "#e9d5ff",
+                textColor: "#111827",
+            };
+            current.setDate(current.getDate() + 1);
+        }
+
+        marked[startDate] = {
+            startingDay: true,
+            color: "#a855f7",
+            textColor: "#fff",
+        };
+
+        marked[endDate] = {
+            endingDay: true,
+            color: "#a855f7",
+            textColor: "#fff",
+        };
+
+        return marked;
+    };
 
     const handleSaveTrip = async () => {
         if (!tripTitle || !destination || !startDate || !endDate) {
-            Alert.alert('Erreur', 'Tous les champs obligatoires doivent être remplis');
+            Alert.alert("Erreur", "Tous les champs obligatoires sont requis");
             return;
         }
 
@@ -205,7 +174,7 @@ export default function AddTripModal() {
 
             const { photos, coverImage } = await uploadImages();
 
-            const trip = {
+            await API.createTrip({
                 title: tripTitle,
                 destination,
                 startDate,
@@ -213,324 +182,160 @@ export default function AddTripModal() {
                 description,
                 image: coverImage,
                 photos,
-            };
+            });
 
-            const newTrip = await API.createTrip(trip);
-
-            console.log('Voyage créé', newTrip);
-
-            Alert.alert('Succès', 'Votre voyage a été créé !', [
-                { text: 'OK', onPress: () => router.back() },
+            Alert.alert("Succès", "Voyage créé", [
+                { text: "OK", onPress: () => router.back() },
             ]);
-
-        } catch (error) {
-            console.error(error);
-            Alert.alert('Erreur', 'Impossible de créer le voyage');
+        } catch {
+            Alert.alert("Erreur", "Impossible de créer le voyage");
         } finally {
             setIsUploading(false);
         }
     };
 
-
     return (
-        <SafeAreaView style={styles.container} edges={['bottom']}>
-            <Text style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 20 }}>Add New Trip</Text>
+        <SafeAreaView style={styles.container}>
             <ScrollView>
-                <View style={styles.section}>
-                    <Text style={styles.label}>Cover photo</Text>
-                    <View style={styles.photoUpload}>
-                        <View style={styles.photoButtons}>
-                            <TouchableOpacity style={styles.photoButton} onPress={takePhoto}>
-                                <Ionicons name="camera" size={32} color="#a855f7" />
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.photoButton} onPress={pickImage}>
-                                <Ionicons name="image" size={32} color="#ec4899" />
-                            </TouchableOpacity>
-                        </View>
-                        <Text style={styles.photoText}>Take a photo or choose from library</Text>
-                        <Text style={styles.photoSubText}>Access camera and photos</Text>
-                    </View>
-                </View>
+                <Text style={styles.title}>Add New Trip</Text>
 
-                {/*Title*/}
+                {/* Photos */}
+                <TouchableOpacity style={styles.imageBtn} onPress={pickImage}>
+                    <Ionicons name="image-outline" size={28} color="#a855f7" />
+                    <Text>Select photos</Text>
+                </TouchableOpacity>
 
-                <View style={styles.section}>
-                    <Text style={styles.label}>Trip Title</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Enter trip title"
-                        value={tripTitle}
-                        onChangeText={setTripTitle}
-                    />
-                </View>
+                {selectedImages.length > 0 && (
+                    <View style={styles.photosPreview}>
+                        <Text style={styles.photosCount}>
+                            {selectedImages.length} photo
+                            {selectedImages.length > 1 ? "s" : ""} sélectionnée
+                            {selectedImages.length > 1 ? "s" : ""}
+                        </Text>
 
-                {/* Destination with location */}
-
-                <View style={styles.section}>
-                    <Text style={styles.label}>Destination</Text>
-                    <View style={styles.inputWithIcon} >
-                        <Ionicons name="location-outline" size={16} color="#6b7280" />
-                        <TextInput
-                            style={styles.inputFlex}
-                            placeholder="City, Country"
-                            value={destination}
-                            onChangeText={setDestination}
-                        />
-                        <TouchableOpacity onPress={getLocation}>
-                            <Text style={styles.gpsButton}>
-                                <Ionicons name="location-outline" size={16} color="#6366f1" /> Use Current Location
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
-                    <Text style={styles.hint}>
-                        💡 Utilisez la géolocalisation pour marquer le lieu
-                    </Text>
-                </View>
-                {/* Dates */}
-                <View style={styles.dateColumn}>
-                    <Text style={styles.label}>Date de départ</Text>
-                    <View style={styles.inputWithIcon}>
-                        <Ionicons name="calendar-outline" size={24} color="#6b7280" />
-                        <TextInput
-                            style={styles.inputFlex}
-                            placeholder="JJ/MM/AAAA"
-                            keyboardType="number-pad"
-                            value={startDate}
-                            onChangeText={(text) => setStartDate(formatDateInput(text))}
-                        />
-
-                    </View>
-                </View>
-                <View style={styles.section}>
-                    <View style={styles.dateRow}>
-                        <View style={styles.dateColumn}>
-                            <Text style={styles.label}>Date de retour</Text>
-                            <View style={styles.inputWithIcon}>
-                                <Ionicons name="calendar-outline" size={24} color="#6b7280" />
-                                <TextInput
-                                    style={styles.inputFlex}
-                                    placeholder="JJ/MM/AAAA"
-                                    keyboardType="number-pad"
-                                    value={endDate}
-                                    onChangeText={(text) => setEndDate(formatDateInput(text))}
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                            {selectedImages.map((uri, index) => (
+                                <Image
+                                    key={index}
+                                    source={{ uri }}
+                                    style={styles.photoThumb}
                                 />
-
-                            </View>
-                        </View>
-                    </View>
-                </View>
-
-                {/* Description */}
-                <View>
-                    <Text style={styles.label}>Description</Text>
-                    <TextInput
-                        style={[styles.input, styles.textArea]}
-                        placeholder="Décrivez votre voyage..."
-                        value={description}
-                        onChangeText={setDescription}
-                        multiline
-                        numberOfLines={4}
-                        textAlignVertical="top"
-                        placeholderTextColor="#9ca3af"
-                    />
-                </View>
-
-                {/* Upload Progress */}
-
-                {isUploading && (
-                    <View style={styles.progressCard}>
-                        <View style={styles.progressHeader}>
-                            <View style={styles.progressInfo}>
-                                <Ionicons name="cloud-upload-outline" size={24} color="#a855f7" />
-                                <Text style={styles.progressText}>Téléchargement en cours...</Text>
-                            </View>
-                            <Text style={styles.progressPercent}>{uploadProgress}%</Text>
-                        </View>
-                        <View style={styles.progressBarBg}>
-                            <LinearGradient
-                                colors={['#a855f7', '#ec4899']}
-                                style={[styles.progressBarFill, { width: `${uploadProgress}%` }]}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 0 }}
-                            />
-                        </View>
+                            ))}
+                        </ScrollView>
                     </View>
                 )}
 
-                {/* Save Button */}
+                {/* Title */}
+                <Text style={styles.label}>
+                    Trip title
+                    <Text style={{ color: "red" }}>*</Text>
+                </Text>
+                <TextInput
+                    style={styles.input}
+                    value={tripTitle}
+                    onChangeText={setTripTitle}
+                    placeholder="Trip title"
+                    placeholderTextColor="#6b7280"
+                />
 
-                <TouchableOpacity style={styles.saveButton}
-                    onPress={handleSaveTrip}
-                    disabled={isUploading}
-                >
+                {/* Destination */}
+                <Text style={styles.label}>
+                    Destination
+                    <Text style={{ color: "red" }}>*</Text>
+                </Text>
+                <View style={styles.row}>
+                    <TextInput
+                        style={[styles.input, { flex: 1 }]}
+                        value={destination}
+                        onChangeText={setDestination}
+                        placeholder="Destination"
+                        placeholderTextColor="#6b7280"
+                    />
+                    <TouchableOpacity onPress={getLocation}>
+                        <Ionicons name="location-outline" size={24} color="#7c3aed" />
+                    </TouchableOpacity>
+                </View>
+
+                {/* Calendar */}
+                <Text style={styles.label}>
+                    {selectingEnd ? "Select return date" : "Select start date"}
+                    <Text style={{ color: "red" }}>*</Text>
+                </Text>
+
+                <Calendar
+                    markingType="period"
+                    markedDates={getMarkedDates()}
+                    onDayPress={onDayPress}
+                    theme={{
+                        dayTextColor: "#111827",
+                        textDisabledColor: "#9ca3af",
+                        monthTextColor: "#111827",
+                        arrowColor: "#a855f7",
+                        todayTextColor: "#7c3aed",
+                    }}
+                />
+
+                {/* Description */}
+                <Text style={styles.label}>Description</Text>
+                <TextInput
+                    style={[styles.input, styles.textArea]}
+                    multiline
+                    value={description}
+                    onChangeText={setDescription}
+                    placeholder="Description"
+                    placeholderTextColor="#6b7280"
+                />
+
+                {/* Save */}
+                <TouchableOpacity onPress={handleSaveTrip} disabled={isUploading}>
                     <LinearGradient
-                        colors={['#a855f7', '#ec4899']}
-                        style={styles.gradientButton}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
+                        colors={["#a855f7", "#ec4899"]}
+                        style={styles.saveBtn}
                     >
-                        <Text style={styles.saveButtonText}>
-                            {isUploading ? 'Enregistrement ...' : 'Créer le voyage'}
+                        <Text style={styles.saveText}>
+                            {isUploading
+                                ? `Uploading ${uploadProgress}%`
+                                : "Create trip"}
                         </Text>
                     </LinearGradient>
                 </TouchableOpacity>
-                <View style={{ height: 40 }}></View>
             </ScrollView>
         </SafeAreaView>
-
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        padding: 20,
-        backgroundColor: '#fff',
-    },
-    section: {
-        marginBottom: 24,
-    },
-    content: {
-        flex: 1,
-        paddingHorizontal: 24,
-        paddingTop: 24,
-    },
-    label: {
-        fontSize: 14,
-        color: '#6b7280',
-        marginBottom: 8,
-        fontWeight: '600'
-    },
-    photoUpload: {
-        backgroundColor: '#faf5ff',
-        borderRadius: 24,
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 2,
-        borderStyle: 'dashed',
-        borderColor: '#e9d5ff',
-    },
-    photoButtons: {
-        flexDirection: 'row',
-        gap: 16,
-        marginBottom: 12,
-        paddingVertical: 16,
-    },
-    photoButton: {
-        width: 64,
-        height: 64,
-        borderRadius: 16,
-        backgroundColor: '#fff',
-        justifyContent: 'center',
-        alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 2,
-    },
-    photoText: {
-        fontSize: 14,
-        color: '#6b7280',
-    },
-    photoSubText: {
-        fontSize: 12,
-        color: '#9ca3af',
-        marginTop: 4,
-    },
+    container: { flex: 1, padding: 20, backgroundColor: "#fff" },
+    title: { fontSize: 24, fontWeight: "bold", marginBottom: 20 },
+    label: { marginTop: 16, marginBottom: 8, fontWeight: "600" },
     input: {
-        backgroundColor: '#f9fafb',
-        borderRadius: 16,
-        paddingHorizontal: 16,
-        paddingVertical: 12,
+        backgroundColor: "#f9fafb",
+        borderRadius: 14,
+        padding: 14,
         fontSize: 16,
-        color: '#111827',
-        borderWidth: 2,
-        borderColor: 'transparent',
     },
-    inputWithIcon: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#f9fafb',
-        borderRadius: 16,
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        borderWidth: 2,
-        borderColor: 'transparent',
-        gap: 12
-    },
-    gpsButton: {
-        color: '#a855f7',
-        fontSize: 14,
-        fontWeight: '600',
-    },
-    inputFlex: {
-        flex: 1,
-        fontSize: 16,
-        color: '#111827',
-    },
-    hint: {
-        fontSize: 12,
-        color: '#9ca3af',
-        marginTop: 8
-    },
-    dateRow: {
-        flexDirection: 'row',
+    row: { flexDirection: "row", alignItems: "center", gap: 12 },
+    imageBtn: {
+        flexDirection: "row",
+        alignItems: "center",
         gap: 12,
+        marginBottom: 12,
     },
-    dateColumn: {
-        flex: 1,
+    photosPreview: { marginBottom: 16 },
+    photosCount: { fontSize: 14, color: "#6b7280", marginBottom: 8 },
+    photoThumb: {
+        width: 70,
+        height: 70,
+        borderRadius: 12,
+        marginRight: 8,
+        backgroundColor: "#e5e7eb",
     },
-    textArea: {
-        height: 100,
-        paddingTop: 12,
-    },
-    progressCard: {
-        backgroundColor: '#faf5ff',
-        borderRadius: 16,
+    textArea: { height: 100, textAlignVertical: "top" },
+    saveBtn: {
+        marginTop: 24,
         padding: 16,
-        marginBottom: 24,
-    },
-    progressHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 12
-    },
-    progressInfo: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8
-    },
-    progressText: {
-        fontSize: 14,
-        color: '#111827'
-    },
-    progressPercent: {
-        fontSize: 14,
-        color: '#a855f7',
-        fontWeight: '600'
-    },
-    progressBarBg: {
-        height: 8,
-        backgroundColor: '#e9d5ff',
-        borderRadius: 4,
-        overflow: 'hidden'
-    },
-    progressBarFill: {
-        height: '100%'
-    },
-    saveButton: {
         borderRadius: 16,
-        overflow: 'hidden'
+        alignItems: "center",
     },
-    gradientButton: {
-        paddingVertical: 16,
-        alignItems: 'center'
-    },
-    saveButtonText: {
-        color: 'white',
-        fontSize: 16,
-        fontWeight: '600',
-    }
+    saveText: { color: "#fff", fontWeight: "600", fontSize: 16 },
 });
