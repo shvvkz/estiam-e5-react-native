@@ -78,6 +78,7 @@ npx expo start
 * **Gestion des favoris**
 * **Carte interactive**
 * **Navigation améliorée**
+* **Calendrier interactif**
 
 ### Décisions
 
@@ -85,7 +86,7 @@ npx expo start
   J'ai créé un service dédié (`favoritesService`) basé sur `AsyncStorage` afin de permettre au user de mettre des voyages en favoris et de les retrouver après avoir redémarrer l’application.
 
 - **useFocusEffect**  
-  J'ai remplacé certains `useEffect` par `useFocusEffect` pour mettre à jour les données après être retourné sur un écran (je l'ai fait sur: trips, map, home).
+  J'ai remplacé certains `useEffect` par `useFocusEffect` pour mettre à jour les données après être retourné sur un écran (je l'ai fait sur: trips, map, calendar et home).
 
 - **Gestion du retour entre écrans**  
   J'ai ajouté un paramètre `from` dans la retour pour adapter le comportement du bouton selon l'endroit où on fait l'action (Home, Trips, Map) ce qui rend l'experience utilisateur plus agréable.

@@ -15,3 +15,10 @@ export interface Trip {
   location: TripLocation;
   isFavorite?: boolean;
 }
+
+export interface ExistingTrip {
+  id: string;
+  title: string;
+  startDate: string;
+  endDate: string;
+}
