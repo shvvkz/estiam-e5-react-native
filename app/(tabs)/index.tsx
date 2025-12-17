@@ -34,11 +34,6 @@ export default function HomeScreen() {
     countries: 0,
   });
 
-  const parseDate = (date: string): Date => {
-    const [day, month, year] = date.split('/');
-    return new Date(`${year}-${month}-${day}`);
-  };
-
   const [upcomingTrips, setUpcomingTrips] = useState<any[]>([]);
   const [activities, setActivities] = useState<any[]>([]);
   const loadHome = async () => {
@@ -142,8 +137,6 @@ export default function HomeScreen() {
               (1000 * 60 * 60 * 24)
             )
           );
-
-
 
           return (
             <TouchableOpacity key={trip.id} style={styles.tripCard} onPress={() => router.push(`/trips/${trip.id}`)}>

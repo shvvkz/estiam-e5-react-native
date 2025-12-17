@@ -24,7 +24,7 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="trips"
+        name="trips/index"
         options={{
           title: 'Trips',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="map.fill" color={color} />,
@@ -48,6 +48,12 @@ export default function TabLayout() {
 
       <Tabs.Screen
         name="trips/[id]"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="trips/map"
         options={{
           href: null,
         }}

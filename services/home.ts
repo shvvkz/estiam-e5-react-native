@@ -1,15 +1,6 @@
 import { auth } from "./auth";
 import { config } from "@/utils/env";
-
-export interface Trip {
-  id: string;
-  title: string;
-  destination: string;
-  startDate: string;
-  endDate: string;
-  image?: string;
-  photos: string[];
-}
+import { Trip } from "@/models/trip";
 
 export interface HomeStats {
   trips: number;
