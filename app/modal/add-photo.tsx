@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   Alert,
   StyleSheet,
+  ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
@@ -115,41 +116,65 @@ export default function AddPhotoModal() {
     <SafeAreaView style={styles.container}>
       <Text style={styles.title}>Add Photo</Text>
 
-      {!isFixedTrip && trips.length === 0 && (
-        <Text style={styles.emptyText}>Aucun voyage disponible</Text>
+      {/* Actions */}
+      <View style={styles.actions}>
+        <TouchableOpacity
+          style={[styles.button, loading && styles.disabled]}
+          onPress={() => addPhoto(false)}
+          disabled={loading}
+        >
+          <Ionicons name="image-outline" size={24} color="#fff" />
+          <Text style={styles.buttonText}>Galerie</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.button, loading && styles.disabled]}
+          onPress={() => addPhoto(true)}
+          disabled={loading}
+        >
+          <Ionicons name="camera-outline" size={24} color="#fff" />
+          <Text style={styles.buttonText}>Caméra</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Trips selection */}
+      {!isFixedTrip && (
+        <View style={styles.tripsContainer}>
+          <Text style={styles.sectionTitle}>Choisir un voyage</Text>
+
+          {trips.length === 0 ? (
+            <Text style={styles.emptyText}>Aucun voyage disponible</Text>
+          ) : (
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {trips.map((trip) => {
+                const isSelected = selectedTrip?.id === trip.id;
+
+                return (
+                  <TouchableOpacity
+                    key={trip.id}
+                    style={[
+                      styles.tripItem,
+                      isSelected && styles.selected,
+                    ]}
+                    onPress={() => setSelectedTrip(trip)}
+                  >
+                    <Text style={styles.tripTitle}>{trip.title}</Text>
+
+                    {isSelected && (
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={20}
+                        color="#7c3aed"
+                      />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+
+            </ScrollView>
+          )}
+        </View>
       )}
-
-      {!isFixedTrip &&
-        trips.map(trip => (
-          <TouchableOpacity
-            key={trip.id}
-            style={[
-              styles.tripItem,
-              selectedTrip?.id === trip.id && styles.selected,
-            ]}
-            onPress={() => setSelectedTrip(trip)}
-          >
-            <Text style={styles.tripTitle}>{trip.title}</Text>
-          </TouchableOpacity>
-        ))}
-
-      <TouchableOpacity
-        style={[styles.button, loading && styles.disabled]}
-        onPress={() => addPhoto(false)}
-        disabled={loading}
-      >
-        <Ionicons name="image-outline" size={24} color="#fff" />
-        <Text style={styles.buttonText}>Galerie</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={[styles.button, loading && styles.disabled]}
-        onPress={() => addPhoto(true)}
-        disabled={loading}
-      >
-        <Ionicons name="camera-outline" size={24} color="#fff" />
-        <Text style={styles.buttonText}>Caméra</Text>
-      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -158,49 +183,59 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 24,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
   },
   title: {
     fontSize: 22,
-    fontWeight: 'bold',
-    marginBottom: 12,
-  },
-  infoText: {
-    color: '#6b7280',
+    fontWeight: "bold",
     marginBottom: 16,
   },
+  actions: {
+    gap: 12,
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+  tripsContainer: {
+    flex: 1,
+  },
   emptyText: {
-    marginTop: 16,
-    color: '#6b7280',
+    color: "#6b7280",
+    marginTop: 12,
   },
   tripItem: {
     padding: 12,
     borderRadius: 8,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: "#f3f4f6",
     marginBottom: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   selected: {
-    backgroundColor: '#ede9fe',
+    backgroundColor: "#ede9fe",
   },
   tripTitle: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   button: {
-    marginTop: 24,
-    backgroundColor: '#7c3aed',
+    backgroundColor: "#7c3aed",
     padding: 16,
     borderRadius: 12,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
     gap: 8,
   },
   disabled: {
     opacity: 0.6,
   },
   buttonText: {
-    color: '#fff',
-    fontWeight: '600',
+    color: "#fff",
+    fontWeight: "600",
   },
 });

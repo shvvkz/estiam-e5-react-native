@@ -183,9 +183,7 @@ export default function TripsScreen() {
       {/* Header */}
       <LinearGradient colors={['#a855f7', '#ec4899']} style={styles.header}>
         <View style={styles.headerTop}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#fff" />
-          </TouchableOpacity>
+          <Text style={styles.placeholder}></Text>
           <Text style={styles.headerTitle}>Trips Calendar</Text>
           <Text style={styles.placeholder}></Text>
         </View>
