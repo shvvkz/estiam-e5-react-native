@@ -12,19 +12,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useRouter } from "expo-router";
 
-import { tripsService } from "@/services/trips";
+import { API } from "@/services/api";
 import { favoritesService } from "@/services/favorites";
 import { IMAGES_SOURCES } from "@/app/(tabs)/index";
-
-interface Trip {
-  id: string;
-  title: string;
-  destination: string;
-  startDate: string;
-  endDate: string;
-  image?: string;
-  photos?: string[];
-}
+import { Trip } from "@/models/trip";
 
 const tabs = ["All", "Upcoming", "Past", "Favorites"] as const;
 type Tab = (typeof tabs)[number];
@@ -43,7 +34,7 @@ export default function TripsScreen() {
 
       const load = async () => {
         try {
-          const data = await tripsService.getTrips();
+          const data = await API.getTrips();
           const favs = await favoritesService.getFavorites();
 
           if (!mounted) return;

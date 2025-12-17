@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -11,26 +11,15 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Image } from "expo-image";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { LinearGradient } from "expo-linear-gradient";
 import { FlatList } from "react-native";
 
 import { API } from "@/services/api";
 import { favoritesService } from "@/services/favorites";
-
+import { Trip } from "@/models/trip";
 const { width, height } = Dimensions.get("window");
-
-interface Trip {
-  id: string;
-  title: string;
-  destination: string;
-  startDate: string;
-  endDate: string;
-  description: string;
-  image?: string;
-  photos?: string[];
-}
 
 export default function TripDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -44,38 +33,43 @@ export default function TripDetailsScreen() {
   const [initialIndex, setInitialIndex] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
 
-  useEffect(() => {
-    let mounted = true;
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
 
-    const loadTrip = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+      const loadTrip = async () => {
+        try {
+          setLoading(true);
+          setError(null);
 
-        const trips = await API.getTrips();
-        const found = trips.find((t: Trip) => t.id === id);
+          const trips = await API.getTrips();
+          const found = trips.find((t: Trip) => t.id === id);
 
-        if (!found) throw new Error("Voyage introuvable");
+          if (!found) throw new Error("Voyage introuvable");
 
-        if (!mounted) return;
+          if (!active) return;
 
-        setTrip(found);
-        const fav = await favoritesService.isFavorite(found.id);
-        setIsFavorite(fav);
-      } catch (err) {
-        if (mounted) {
-          setError(err instanceof Error ? err.message : "Erreur chargement");
+          setTrip(found);
+
+          const fav = await favoritesService.isFavorite(found.id);
+          setIsFavorite(fav);
+        } catch (err) {
+          if (active) {
+            setError(err instanceof Error ? err.message : "Erreur chargement");
+          }
+        } finally {
+          if (active) setLoading(false);
         }
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
+      };
 
-    loadTrip();
-    return () => {
-      mounted = false;
-    };
-  }, [id]);
+      loadTrip();
+
+      return () => {
+        active = false;
+      };
+    }, [id])
+  );
+
 
   const toggleFavorite = async () => {
     if (!trip) return;
@@ -90,7 +84,7 @@ export default function TripDetailsScreen() {
       router.replace({ pathname: "/(tabs)/trips" });
     } else if (from === "map") {
       router.replace({ pathname: "/(tabs)/trips/map" });
-    } else{
+    } else {
       router.replace({ pathname: "/" });
     }
   };
