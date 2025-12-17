@@ -6,6 +6,28 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
+/**
+ * TabLayout
+ *
+ * Defines the main tab-based navigation structure of the application.
+ * This layout is responsible for configuring all bottom tabs displayed
+ * to the user and their associated routes.
+ *
+ * Responsibilities:
+ * - Configure the global Tabs navigator using Expo Router
+ * - Define visible tabs (Home, Trips, Profile, Notifications)
+ * - Hide technical or secondary routes from the tab bar
+ * - Apply shared tab bar behavior such as haptic feedback
+ * - Adapt tab colors based on the current color scheme
+ *
+ * Navigation rules:
+ * - Routes such as "trips/[id]" and "trips/map" are intentionally hidden
+ *   from the tab bar and are only accessible through programmatic navigation
+ * - The tab bar is the main entry point for high-level navigation
+ *
+ * This layout acts as the root navigation layer for the authenticated
+ * area of the application.
+ */
 export default function TabLayout() {
   const colorScheme = useColorScheme();
 

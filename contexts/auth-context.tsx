@@ -14,6 +14,17 @@ import {
     useState,
 } from 'react';
 
+/**
+ * AuthContextType
+ *
+ * Defines the shape of the authentication context.
+ *
+ * This interface describes all authentication-related data
+ * and actions exposed to the application through the AuthContext.
+ *
+ * It centralizes user identity, authentication state,
+ * loading indicators, and auth lifecycle methods.
+ */
 interface AuthContextType {
     user: User | null;
     isLoading: boolean;
@@ -27,6 +38,20 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+/**
+ * AuthProvider
+ *
+ * Global authentication provider responsible for:
+ * - Managing the authenticated user state
+ * - Persisting and restoring authentication on app startup
+ * - Exposing login, registration, logout, and refresh actions
+ *
+ * This provider must wrap the entire application
+ * to allow access to authentication state via the useAuth hook.
+ *
+ * Navigation decisions based on authentication state
+ * are intentionally handled outside of this provider.
+ */
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -121,6 +146,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     );
 };
 
+/**
+ * useAuth
+ *
+ * Public hook used to access authentication state and actions.
+ *
+ * Must be called within an AuthProvider.
+ * Throws a runtime error if used outside of the provider scope.
+ *
+ * This hook is the only supported way for screens and components
+ * to interact with authentication logic.
+ */
 export const useAuth = () => {
     const context = useContext(AuthContext);
     if (!context) {

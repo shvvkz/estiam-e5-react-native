@@ -15,6 +15,9 @@ import { useFocusEffect } from 'expo-router';
 
 
 import { homeService } from '@/services/home';
+import { Trip } from '@/models/trip';
+import { HomeActivity } from '@/models/home-activity';
+import { useAuth } from '@/contexts/auth-context';
 
 export const IMAGES_SOURCES = {
   paris: require('@/assets/images/paris.jpeg'),
@@ -22,6 +25,31 @@ export const IMAGES_SOURCES = {
   bali: require('@/assets/images/bali.jpeg'),
 };
 
+/**
+ * HomeScreen
+ *
+ * Main dashboard screen of the application.
+ * This screen provides a high-level overview of the user's travel activity
+ * and acts as the primary entry point after authentication.
+ *
+ * Responsibilities:
+ * - Fetch and display global statistics (trips, photos, countries)
+ * - Display a list of upcoming trips
+ * - Display recent user activities
+ * - Provide quick navigation actions (add trip, add photo, explore trips)
+ *
+ * Data lifecycle:
+ * - Data is refreshed every time the screen gains focus
+ *   using useFocusEffect to ensure up-to-date information
+ *
+ * Navigation:
+ * - Allows navigation to trip details
+ * - Provides shortcuts to trips list, add-trip modal, add-photo modal
+ * - Routes to the notifications screen
+ *
+ * This screen prioritizes fast access to key information
+ * and recent user actions.
+ */
 export default function HomeScreen() {
   const router = useRouter();
 
@@ -34,8 +62,29 @@ export default function HomeScreen() {
     countries: 0,
   });
 
-  const [upcomingTrips, setUpcomingTrips] = useState<any[]>([]);
-  const [activities, setActivities] = useState<any[]>([]);
+  const user = useAuth();
+  const [upcomingTrips, setUpcomingTrips] = useState<Trip[]>([]);
+
+  const [activities, setActivities] = useState<HomeActivity[]>([]);
+
+  /**
+  * loadHome
+  *
+  * Fetches and aggregates all data required for the Home screen.
+  *
+  * Responsibilities:
+  * - Retrieve global statistics (trip count, photo count, country count)
+  * - Retrieve upcoming trips
+  * - Retrieve recent activity history
+  *
+  * Error handling:
+  * - Displays a user-friendly error message if data loading fails
+  * - Ensures loading state is always properly reset
+  *
+  * This function is intentionally called from useFocusEffect
+  * to keep the Home screen data synchronized with user actions
+  * performed elsewhere in the application.
+  */
   const loadHome = async () => {
     try {
       setLoading(true);
@@ -88,7 +137,7 @@ export default function HomeScreen() {
           <View style={styles.headerTop}>
             <View>
               <Text style={styles.greentingText}>Hello</Text>
-              <Text style={styles.firstnameText}>shvvkz!</Text>
+              <Text style={styles.firstnameText}>{user.user?.name || "Utilisateur"}!</Text>
             </View>
             <TouchableOpacity
               style={styles.notificationBtn}
@@ -109,11 +158,11 @@ export default function HomeScreen() {
               { label: 'Photos', value: stats.photos, icon: 'camera-outline' },
               { label: 'Countries', value: stats.countries, icon: 'globe-outline' },
             ].map((stat, index) => (
-              <View key={index} style={styles.statCard}>
-                <Ionicons name={stat.icon as any} color="#fff" style={styles.statIcon} />
+                <View key={index} style={styles.statCard}>
+                <Ionicons name={stat.icon as keyof typeof Ionicons.glyphMap} color="#fff" style={styles.statIcon} />
                 <Text style={styles.statValue}>{stat.value}</Text>
                 <Text style={styles.statLabel}>{stat.label}</Text>
-              </View>
+                </View>
             ))}
           </View>
         </LinearGradient>
@@ -215,9 +264,9 @@ export default function HomeScreen() {
             <Text style={styles.sectionTitle}>Recent Activity</Text>
 
             {activities.map((activity, idx) => (
-              <View style={styles.activityCard} key={idx}>
+                <View style={styles.activityCard} key={idx}>
                 <Ionicons
-                  name={activity.icon as any}
+                  name={activity.icon as keyof typeof Ionicons.glyphMap}
                   size={24}
                   color="#6b7280"
                   style={{ marginRight: 12 }}
@@ -226,7 +275,7 @@ export default function HomeScreen() {
                   <Text style={styles.activityText}>{activity.text}</Text>
                   <Text style={styles.activityTime}>{activity.time}</Text>
                 </View>
-              </View>
+                </View>
             ))}
           </View>
         </View>

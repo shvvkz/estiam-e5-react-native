@@ -53,6 +53,19 @@ const secureStorage = {
     },
 };
 
+/**
+ * decodeJWT
+ *
+ * Decodes and validates a JSON Web Token payload.
+ *
+ * Behavior:
+ * - Ensures the token format is valid
+ * - Ensures the presence of an expiration claim
+ * - Throws explicit errors on malformed tokens
+ *
+ * This function is intentionally strict to avoid
+ * silently accepting invalid authentication states.
+ */
 export const decodeJWT = (token: string): JWTPayload => {
     if (!token) throw new Error('JWT missing');
 
@@ -73,6 +86,16 @@ export const decodeJWT = (token: string): JWTPayload => {
     }
 };
 
+/**
+ * isTokenExpired
+ *
+ * Determines whether a JWT access token is expired or about to expire.
+ *
+ * A safety margin is applied to proactively refresh tokens
+ * before actual expiration to avoid race conditions.
+ *
+ * Returns true if the token is invalid, malformed, or expired.
+ */
 export const isTokenExpired = (token: string): boolean => {
     try {
         const { exp } = decodeJWT(token);
@@ -84,6 +107,20 @@ export const isTokenExpired = (token: string): boolean => {
 
 let refreshPromise: Promise<AuthTokens | null> | null = null;
 
+/**
+ * Auth Service
+ *
+ * Centralized authentication and session management service.
+ *
+ * Responsibilities:
+ * - Handle login, registration, logout
+ * - Persist authentication tokens securely
+ * - Manage token expiration and refresh lifecycle
+ * - Expose an authenticated fetch helper
+ *
+ * This service is designed to be stateless from the UI perspective
+ * and acts as the single source of truth for authentication state.
+ */
 export const auth = {
 
     async saveTokens(tokens: AuthTokens): Promise<void> {
@@ -203,7 +240,17 @@ export const auth = {
         await Promise.all([this.clearTokens(), this.clearUser()]);
     },
 
-
+    /**
+     * refreshTokens
+     *
+     * Refreshes authentication tokens using the refresh token.
+     *
+     * Concurrency control:
+     * - Ensures only one refresh request is executed at a time
+     * - Subsequent calls reuse the same in-flight promise
+     *
+     * Returns null if refresh fails and clears local authentication state.
+     */
     async refreshTokens(): Promise<AuthTokens | null> {
         if (refreshPromise) return refreshPromise;
         refreshPromise = this._doRefresh().catch(() => null);
@@ -275,6 +322,18 @@ export const auth = {
         }
     },
 
+    /**
+     * fetch
+     *
+     * Authenticated wrapper around the native fetch API.
+     *
+     * Responsibilities:
+     * - Automatically attach Authorization headers
+     * - Refresh access tokens when expired
+     * - Retry once on HTTP 401 responses
+     *
+     * Throws an error if authentication cannot be restored.
+     */
     async fetch(url: string, options: RequestInit = {}): Promise<Response> {
         let tokens = await this.getTokens();
         if (!tokens) throw new Error('Not authenticated');

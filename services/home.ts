@@ -1,19 +1,7 @@
 import { auth } from "./auth";
 import { config } from "@/utils/env";
 import { Trip } from "@/models/trip";
-
-export interface HomeStats {
-  trips: number;
-  photos: number;
-  countries: number;
-}
-
-export interface HomeActivity {
-  id: string;
-  icon: string;
-  text: string;
-  time: string;
-}
+import { HomeActivity, HomeStats } from "@/models/home-activity";
 
 export interface HomeData {
   stats: HomeStats;
@@ -21,7 +9,35 @@ export interface HomeData {
   activities: HomeActivity[];
 }
 
+/**
+ * homeService
+ *
+ * Provides aggregated data used by the Home screen.
+ *
+ * This service acts as a view-model layer:
+ * - It fetches raw trip data from the backend
+ * - It computes derived statistics
+ * - It prepares structured data ready for UI consumption
+ *
+ * No UI logic should be placed here.
+ */
 export const homeService = {
+  /**
+   * getHomeData
+   *
+   * Fetches all trips and derives Home screen data from them.
+   *
+   * Responsibilities:
+   * - Compute global statistics (trips count, photos count, countries count)
+   * - Extract upcoming trips sorted by start date
+   * - Generate recent activity entries for display
+   *
+   * Throws:
+   * - Error if the backend request fails
+   *
+   * Returns:
+   * - HomeData object ready to be consumed by the Home screen
+   */
   async getHomeData(): Promise<HomeData> {
     const response = await auth.fetch(`${config.mockBackendUrl}/trips`);
 

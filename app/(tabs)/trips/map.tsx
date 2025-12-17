@@ -1,31 +1,75 @@
-import { useEffect, useState } from "react";
-import { View, StyleSheet, Dimensions, TouchableOpacity } from "react-native";
+import { useCallback, useState } from "react";
+import { View, StyleSheet, TouchableOpacity } from "react-native";
 import MapView, { Marker } from "react-native-maps";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
-
 
 import { API } from "@/services/api";
 import TripMapCard from "@/components/trip-map-card";
+import { Trip } from "@/models/trip";
 
-
+/**
+ * TripsMapScreen
+ *
+ * Displays all user trips on a world map using geographic coordinates.
+ * Each trip that contains valid latitude and longitude data is represented
+ * by a marker on the map.
+ *
+ * Responsibilities:
+ * - Fetch the list of trips when the screen becomes focused
+ * - Render map markers for trips that have valid location data
+ * - Handle marker selection to preview a trip
+ * - Display a contextual card for the selected trip
+ * - Navigate to the trip detail screen when the user chooses to open a trip
+ *
+ * Navigation behavior:
+ * - When opening a trip from this screen, a "from=map" parameter is passed
+ *   to the trip detail screen in order to customize back navigation behavior.
+ *
+ * This screen acts as a visual exploration entry point for trips and complements
+ * the list-based Trips screen.
+ */
 export default function TripsMapScreen() {
   const router = useRouter();
-  const [trips, setTrips] = useState<any[]>([]);
-  const [selectedTrip, setSelectedTrip] = useState<any | null>(null);
 
-  useEffect(() => {
-    API.getTrips().then(setTrips);
-  }, []);
+  const [trips, setTrips] = useState<Trip[]>([]);
+  const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
+
+  /**
+   * Loads trips whenever the screen gains focus.
+   *
+   * Using useFocusEffect ensures that the map is refreshed
+   * when navigating back from other screens (e.g. trip details),
+   * keeping markers in sync with the latest data.
+   */
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+
+      const loadTrips = async () => {
+        const data = await API.getTrips();
+        if (active) {
+          setTrips(data);
+        }
+      };
+
+      loadTrips();
+
+      return () => {
+        active = false;
+      };
+    }, [])
+  );
 
   return (
     <View style={styles.container}>
-        <TouchableOpacity
-            onPress={() => router.replace("/trips")}
-            style={{ position: "absolute", top: 40, left: 20, zIndex: 10 }}
-        >
-            <Ionicons name="arrow-back" size={24} />
-        </TouchableOpacity>
+      <TouchableOpacity
+        onPress={() => router.replace("/trips")}
+        style={{ position: "absolute", top: 40, left: 20, zIndex: 10 }}
+      >
+        <Ionicons name="arrow-back" size={24} />
+      </TouchableOpacity>
+
       <MapView
         style={StyleSheet.absoluteFill}
         initialRegion={{
@@ -36,8 +80,10 @@ export default function TripsMapScreen() {
         }}
       >
         {trips
-          .filter(t => t.location?.lat && t.location?.lng)
-          .map(trip => (
+          .filter(
+            (trip) => trip.location?.lat && trip.location?.lng
+          )
+          .map((trip) => (
             <Marker
               key={trip.id}
               coordinate={{

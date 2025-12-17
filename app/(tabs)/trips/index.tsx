@@ -20,6 +20,30 @@ import { Trip } from "@/models/trip";
 const tabs = ["All", "Upcoming", "Past", "Favorites"] as const;
 type Tab = (typeof tabs)[number];
 
+/**
+ * TripsScreen
+ *
+ * Displays the list of user trips with filtering and search capabilities.
+ *
+ * Features:
+ * - Fetches trips from the API on screen focus
+ * - Supports filtering by:
+ *   - All
+ *   - Upcoming
+ *   - Past
+ *   - Favorites
+ * - Allows searching trips by title or destination
+ * - Allows toggling favorites directly from the list
+ *
+ * Navigation:
+ * - Opens trip details when selecting a trip
+ * - Provides quick access to:
+ *   - Map view
+ *   - Add trip modal
+ *
+ * Data is refreshed using `useFocusEffect` to ensure consistency
+ * after navigation or modal actions.
+ */
 export default function TripsScreen() {
   const router = useRouter();
 
@@ -28,6 +52,18 @@ export default function TripsScreen() {
   const [selectedTab, setSelectedTab] = useState<Tab>("All");
   const [search, setSearch] = useState("");
 
+  /**
+  * Loads trips and favorite IDs whenever the screen gains focus.
+  *
+  * Why:
+  * - Ensures favorites and trip data stay in sync
+  *   after navigating back from details, map, or modals.
+  * - Prevents stale UI state.
+  *
+  * Implementation:
+  * - Uses a mounted flag to avoid state updates
+  *   if the component unmounts during async operations.
+  */
   useFocusEffect(
     useCallback(() => {
       let mounted = true;
@@ -53,6 +89,10 @@ export default function TripsScreen() {
     }, [])
   );
 
+  /**
+  * Toggles the favorite state of a trip
+  * and updates local favorites state accordingly.
+  */
   const toggleFavorite = async (tripId: string) => {
     const value = await favoritesService.toggleFavorite(tripId);
     setFavorites((prev) =>
@@ -60,6 +100,14 @@ export default function TripsScreen() {
     );
   };
 
+  /**
+  * Computes the visible trips list based on:
+  * - Selected tab (All / Upcoming / Past / Favorites)
+  * - Search query (title + destination)
+  *
+  * Memoized to avoid unnecessary recalculations
+  * when unrelated state changes.
+  */
   const filteredTrips = useMemo(() => {
     const now = Date.now();
 
@@ -301,6 +349,6 @@ const styles = StyleSheet.create({
     right: 24,
   },
   fabLeft: {
-    right: 334,
+    left: 24,
   },
 });

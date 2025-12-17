@@ -18,12 +18,23 @@ import { Calendar } from "react-native-calendars";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { API } from "@/services/api";
+import { TripLocation } from "@/models/trip";
 
-interface LocationCoords {
-  lat: number;
-  lng: number;
-}
-
+/**
+ * AddTripModal
+ *
+ * Modal screen responsible for creating a new trip.
+ *
+ * This screen allows the user to:
+ * - Define basic trip information (title, destination, description)
+ * - Select a date range using a calendar
+ * - Pick multiple photos and upload them
+ * - Automatically determine geographic coordinates either from
+ *   the user's current location or by geocoding the destination text
+ *
+ * The first uploaded image is used as the trip cover image.
+ * Once the trip is successfully created, the modal closes automatically.
+ */
 export default function AddTripModal() {
   const router = useRouter();
 
@@ -40,8 +51,8 @@ export default function AddTripModal() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const DESTINATION_REGEX = /^[A-Za-zÀ-ÿ' -]+,\s*[A-Za-zÀ-ÿ' -]+$/;
 
-  const [locationCoords, setLocationCoords] =
-    useState<LocationCoords | null>(null);
+  const [tripLocation, setTripLocation] =
+    useState<TripLocation | null>(null);
 
   const openAppSettings = () => Linking.openSettings();
 
@@ -52,7 +63,18 @@ export default function AddTripModal() {
     ]);
   };
 
-  // 🌍 GPS
+  /**
+   * getLocation
+   *
+   * Requests foreground location permission and retrieves the user's
+   * current geographic position.
+   *
+   * The function also performs reverse geocoding in order to infer
+   * a human-readable destination (city and country), which is then
+   * automatically filled into the destination field.
+   *
+   * If permission is denied, the user is prompted to open the system settings.
+   */
   const getLocation = async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -69,7 +91,7 @@ export default function AddTripModal() {
         const country = address[0].country || "";
 
         setDestination(`${city}${city && country ? ", " : ""}${country}`);
-        setLocationCoords({
+        setTripLocation({
           lat: loc.coords.latitude,
           lng: loc.coords.longitude,
         });
@@ -78,11 +100,22 @@ export default function AddTripModal() {
       Alert.alert("Erreur", "Localisation indisponible");
     }
   };
-
-  // 🔎 Géocodage texte (OpenStreetMap)
+  /**
+   * geocodeDestination
+   *
+   * Converts a textual destination (city, country) into geographic
+   * coordinates using the OpenStreetMap Nominatim API.
+   *
+   * This function is used as a fallback when the user does not
+   * explicitly provide their current location.
+   *
+   * @param query - Destination string in the format "City, Country"
+   * @returns Geographic coordinates corresponding to the destination
+   * @throws Error if the destination cannot be resolved
+   */
   const geocodeDestination = async (
     query: string
-  ): Promise<LocationCoords> => {
+  ): Promise<TripLocation> => {
     const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
       query
     )}&format=json&limit=1`;
@@ -103,7 +136,6 @@ export default function AddTripModal() {
     };
   };
 
-  // 🖼️ Images
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
@@ -125,6 +157,18 @@ export default function AddTripModal() {
     }
   };
 
+  /**
+   * uploadImages
+   *
+   * Uploads all selected images sequentially to the backend.
+   *
+   * Responsibilities:
+   * - Upload each image individually
+   * - Track and update upload progress
+   * - Determine the cover image (first uploaded image)
+   *
+   * @returns An object containing the uploaded photo URLs and the cover image URL
+   */
   const uploadImages = async () => {
     const photos: string[] = [];
     let coverImage = "";
@@ -139,8 +183,7 @@ export default function AddTripModal() {
     return { photos, coverImage };
   };
 
-  // 📅 Calendrier
-  const onDayPress = (day: any) => {
+  const onDayPress = (day: { dateString: string }) => {
     const date = day.dateString;
 
     if (!startDate || endDate) {
@@ -173,7 +216,7 @@ export default function AddTripModal() {
       };
     }
 
-    const marked: any = {};
+    const marked: Record<string, object> = {};
     let current = new Date(startDate);
     const last = new Date(endDate);
 
@@ -202,7 +245,19 @@ export default function AddTripModal() {
     return marked;
   };
 
-  // 💾 Save
+  /**
+   * handleSaveTrip
+   *
+   * Validates the trip form and orchestrates the full trip creation process.
+   *
+   * Steps:
+   * - Validate required fields and destination format
+   * - Upload selected images
+   * - Resolve geographic location (user location or geocoding)
+   * - Send the final payload to the backend API
+   *
+   * Displays appropriate success or error feedback to the user.
+   */
   const handleSaveTrip = async () => {
     if (!tripTitle || !destination || !startDate || !endDate) {
       Alert.alert("Erreur", "Tous les champs obligatoires sont requis");
@@ -223,7 +278,7 @@ export default function AddTripModal() {
 
       const { photos, coverImage } = await uploadImages();
 
-      let finalLocation = locationCoords;
+      let finalLocation = tripLocation;
       if (!finalLocation) {
         finalLocation = await geocodeDestination(destination);
       }
