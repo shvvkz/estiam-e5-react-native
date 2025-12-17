@@ -1,340 +1,308 @@
-import { Platform, StyleSheet, View, Text, TextInput, TouchableOpacity, ScrollView, Image } from 'react-native';
+import { useCallback, useMemo, useState } from "react";
+import {
+  StyleSheet,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  Image,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { useFocusEffect, useRouter } from "expo-router";
 
-import { Collapsible } from '@/components/ui/collapsible';
-import { ExternalLink } from '@/components/external-link';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Fonts } from '@/constants/theme';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { HeaderTitle } from '@react-navigation/elements';
-import { useState } from 'react';
-import { IMAGES_SOURCES } from '.';
-import { useRouter } from 'expo-router';
+import { tripsService } from "@/services/trips";
+import { favoritesService } from "@/services/favorites";
 
-export default function TabTwoScreen() {
+export const IMAGES_SOURCES = {
+  paris: require('@/assets/images/paris.jpeg'),
+  tokyo: require('@/assets/images/tokyo.jpeg'),
+  bali: require('@/assets/images/bali.jpeg'),
+};
 
+interface Trip {
+  id: string;
+  title: string;
+  destination: string;
+  startDate: string;
+  endDate: string;
+  image?: string;
+  photos?: string[];
+}
+
+const tabs = ["All", "Upcoming", "Past", "Favorites"] as const;
+type Tab = (typeof tabs)[number];
+
+export default function TripsScreen() {
   const router = useRouter();
-  const [selectedTab, setSelectedTab] = useState<string>('All');
 
-  const TRIPS_DATA = [
-    {
-      id: '1',
-      title: 'Trip to Bali',
-      destination : 'Bali, Indonesia',
-      startDate : '2024-08-10',
-      endDate : '2024-08-20',
-      image : 'bali',
-      photosCount: 3
-    },
-    {
-      id: '2',
-      title: 'Trip to Tokyo',
-      destination : 'Tokyo, Japan',
-      startDate : '2024-09-15',
-      endDate : '2024-09-25',
-      image : 'tokyo',
-      photosCount: 5
-    }, 
-      {
-      id: '3',
-      title: 'Trip to Paris',
-      destination : 'Paris, France',
-      startDate : '2024-10-05',
-      endDate : '2024-10-15',
-      image : 'paris',
-      photosCount: 8
-      }
-  ];
+  const [trips, setTrips] = useState<Trip[]>([]);
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const [selectedTab, setSelectedTab] = useState<Tab>("All");
+  const [search, setSearch] = useState("");
 
-  const tabs = ['All', 'Upcoming', 'Past', 'Favorites'];
+  useFocusEffect(
+    useCallback(() => {
+      let mounted = true;
 
+      const load = async () => {
+        try {
+          const data = await tripsService.getTrips();
+          const favs = await favoritesService.getFavorites();
+
+          if (!mounted) return;
+
+          setTrips(data);
+          setFavorites(favs);
+        } catch (e) {
+          console.error("Failed to load trips", e);
+        }
+      };
+
+      load();
+      return () => {
+        mounted = false;
+      };
+    }, [])
+  );
+
+  const toggleFavorite = async (tripId: string) => {
+    const value = await favoritesService.toggleFavorite(tripId);
+    setFavorites((prev) =>
+      value ? [...prev, tripId] : prev.filter((id) => id !== tripId)
+    );
+  };
+
+  const filteredTrips = useMemo(() => {
+    const now = Date.now();
+
+    return trips
+      .filter((trip) => {
+        if (selectedTab === "Upcoming") {
+          return new Date(trip.startDate).getTime() > now;
+        }
+        if (selectedTab === "Past") {
+          return new Date(trip.endDate).getTime() < now;
+        }
+        if (selectedTab === "Favorites") {
+          return favorites.includes(trip.id);
+        }
+        return true;
+      })
+      .filter((trip) =>
+        `${trip.title} ${trip.destination}`
+          .toLowerCase()
+          .includes(search.toLowerCase())
+      );
+  }, [trips, favorites, selectedTab, search]);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={["top"]}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.HeaderTitle}>My Trips</Text>
+        <Text style={styles.headerTitle}>My Trips</Text>
 
-        {/* Search Bar */}
+        {/* Search */}
         <View style={styles.searchBarContainer}>
           <View style={styles.searchBar}>
             <Ionicons name="search" size={20} color="#9ca3af" />
-            <TextInput style={styles.searchInput} placeholder="Search trips" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search trips"
+              placeholderTextColor="#6b7280"
+              value={search}
+              onChangeText={setSearch}
+            />
           </View>
-          <TouchableOpacity style={styles.filterButton}>
-            <Ionicons name="options-outline" size={24} color="white" />
-          </TouchableOpacity>
         </View>
       </View>
 
-
-      <ScrollView style= {styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false}>
         {/* Tabs */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          style = {styles.tabContainer}
-          contentContainerStyle={ styles.tabsContent}>
+          style={styles.tabContainer}
+          contentContainerStyle={styles.tabsContent}
+        >
           {tabs.map((tab) => (
             <TouchableOpacity
               key={tab}
               style={[
                 styles.tab,
-                selectedTab === tab && styles.tabAcitve,
+                selectedTab === tab && styles.tabActive,
               ]}
-              onPress={() => setSelectedTab(tab)}>
+              onPress={() => setSelectedTab(tab)}
+            >
               <Text
                 style={[
                   styles.tabText,
                   selectedTab === tab && styles.tabTextActive,
-                ]}>
+                ]}
+              >
                 {tab}
               </Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
 
-        {/* Trips List */}
+        {/* Trips */}
         <View style={styles.tripsList}>
-          {TRIPS_DATA.map((trip) => (
-            <TouchableOpacity
-              key={trip.id}
-              style={styles.tripCard}>
-            {/* Image */}
-            <View style={styles.tripImageContainer}> 
-              <Image source={IMAGES_SOURCES[trip.image as keyof typeof IMAGES_SOURCES] || trip.image}
-               style={styles.tripImage}
-               resizeMode="cover"
-               />
-              <View style={styles.tripImageOverlay} /> 
-              <View style={styles.tripImageContent}>
-                <Text style={styles.tripCardTitle}>{trip.title}</Text>
-                <View style={styles.tripLocation}>
-                  <Ionicons name="location-outline" size={16} color="white" />
-                  <Text style={styles.tripLocationText}>{trip.destination}</Text>
-                </View>
-              </View>
-              </View>
+          {filteredTrips.map((trip) => {
+            const isFavorite = favorites.includes(trip.id);
 
-              {/* Trip info */}
+            return (
+              <TouchableOpacity
+                key={trip.id}
+                style={styles.tripCard}
+                onPress={() =>
+                  router.push({
+                    pathname: "/trips/[id]",
+                    params: { id: trip.id, from: "trips" },
+                  })
+                }
+              >
+                {/* Image */}
+                <View style={styles.tripImageContainer}>
+                  <Image
+                    source={
+                      trip.image
+                        ? { uri: trip.image }
+                        : IMAGES_SOURCES.paris
+                    }
+                    style={styles.tripImage}
+                  />
 
-              <View style={styles.tripCardInfo}>
-                <View style={styles.tripDate}>
-                  <Ionicons name="calendar-outline" size={16} color="#6b7280" />
-                  <Text style={styles.tripDateText}>
-                    {new Date(trip.startDate).toLocaleDateString('fr-FR', {day: 'numeric', month: 'short'})} -
-                    {new Date(trip.endDate).toLocaleDateString('fr-FR', {day: 'numeric', month: 'short'})}
-                    </Text>
-                </View>
-                <View style={styles.tripPhotos}>
-                  <View style={styles.photoCircle}/>
-                  <View style={[styles.photoCircle, styles.photoCircle2]}/>
-                  <View style={[styles.photoCircle, styles.photoCircle3]}>
-                    <Text style={styles.tripPhotoCount}>{trip.photosCount}</Text>
-                  </View>
+                  <TouchableOpacity
+                    style={styles.heartBtn}
+                    onPress={() => toggleFavorite(trip.id)}
+                  >
+                    <Ionicons
+                      name={isFavorite ? "heart" : "heart-outline"}
+                      size={22}
+                      color={isFavorite ? "#ef4444" : "white"}
+                    />
+                  </TouchableOpacity>
                 </View>
 
+                {/* Info */}
+                <View style={styles.tripInfo}>
+                  <Text style={styles.tripTitle}>{trip.title}</Text>
+                  <Text style={styles.tripDestination}>
+                    {trip.destination}
+                  </Text>
+
+                  <Text style={styles.tripDate}>
+                    {new Date(trip.startDate).toLocaleDateString()} →{" "}
+                    {new Date(trip.endDate).toLocaleDateString()}
+                  </Text>
                 </View>
-          </TouchableOpacity>
-          ))}
-          
+              </TouchableOpacity>
+            );
+          })}
+
+          {filteredTrips.length === 0 && (
+            <Text style={styles.emptyText}>Aucun voyage</Text>
+          )}
         </View>
-        <View style= {{height: 20}}/>
-      </ScrollView >
 
-      <TouchableOpacity style= {styles.fabButton}
-        onPress ={() => router.push('/modal/add-trip')}>
-        <Ionicons
-          name="add"
-            size={28}
-          color="white"
-        />
+        <View style={{ height: 80 }} />
+      </ScrollView>
+
+      {/* FAB */}
+      <TouchableOpacity
+        style={styles.fabButton}
+        onPress={() => router.push("/modal/add-trip")}
+      >
+        <Ionicons name="add" size={28} color="white" />
       </TouchableOpacity>
-    </SafeAreaView >
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container : {
-    flex : 1,
-    backgroundColor : '#f9fafb',},
-  header : {
-    backgroundColor : '#fff',
-    paddingHorizontal : 24,
-    paddingTop : 16,
-    paddingBottom : 16
+  container: { flex: 1, backgroundColor: "#f9fafb" },
+
+  header: {
+    backgroundColor: "#fff",
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 16,
   },
-  HeaderTitle : {
-    fontSize : 32,
-    fontWeight : 'bold',
-    color : '#111827',
-    marginBottom : 16
-  },
-  searchBarContainer : {
-    flexDirection : 'row',
-    gap : 12,
-  },
-  searchBar : {
-    flex : 1,
-    flexDirection : 'row',
-    alignItems : 'center',
-    backgroundColor : '#f3f4f6',
-    paddingHorizontal : 16,
-    paddingVertical : 12,
-    borderRadius : 16,
-    gap : 12,
-  },
-  searchInput: {
-    flex : 1,
-    fontSize : 16,
-    color : '#111827',
-  },
-  filterButton : {
-    width : 48,
-    height : 48,
-    backgroundColor : '#a855f7',
-    borderRadius : 16,
-    justifyContent : 'center',
-    alignItems : 'center',
-  },
-  content : {
-    flex : 1,
-  },
-  tabContainer : {
-    paddingHorizontal : 24,
-    paddingVertical : 16,
-  },
-  tabsContent : {
-    gap : 8,
-  },
-  tab : {
-    paddingHorizontal : 16,
-    paddingVertical : 8,
-    borderRadius : 20,
-    backgroundColor : 'white',
-  },
-  tabAcitve : {
-    backgroundColor : '#a855f7',
-  },
-  tabText : {
-    fontSize: 14,
-    color : '#6b7280',
-    fontWeight : '600',
-  },
-  tabTextActive : {
-    color : 'white',
-  },
-  tripsList : {
-    paddingHorizontal : 24,
-    gap : 16,
-  },
-  tripCard : {
-    backgroundColor: '#fff',
-    borderRadius: 24,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+  headerTitle: {
+    fontSize: 32,
+    fontWeight: "bold",
+    color: "#111827",
     marginBottom: 16,
   },
-  tripImageContainer : {
-    position : 'relative',
-    height : 192,
+
+  searchBarContainer: { flexDirection: "row" },
+  searchBar: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f3f4f6",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 16,
+    gap: 12,
   },
-  tripImage : {
-    width: '100%',
-    height: '100%',
-    backgroundColor : '#FF0',
+  searchInput: { flex: 1, fontSize: 16 },
+
+  tabContainer: { paddingHorizontal: 24, paddingVertical: 16 },
+  tabsContent: { gap: 8 },
+  tab: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: "white",
   },
-  tripImageOverlay : {
-    position : 'absolute',
-    top : 0,
-    left : 0,
-    right : 0,
-    bottom : 0,
-    backgroundColor : 'rgba(0,0,0,0.3)',
+  tabActive: { backgroundColor: "#a855f7" },
+  tabText: { color: "#6b7280", fontWeight: "600" },
+  tabTextActive: { color: "white" },
+
+  tripsList: { paddingHorizontal: 24, gap: 16 },
+
+  tripCard: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    overflow: "hidden",
+    elevation: 3,
   },
-  tripImageContent : {
-    position : 'absolute',
-    bottom : 16,
-    left : 16,
-    right : 16,
+  tripImageContainer: { position: "relative", height: 180 },
+  tripImage: { width: "100%", height: "100%" },
+
+  heartBtn: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    borderRadius: 20,
+    padding: 6,
   },
-  tripCardTitle : {
-    fontSize : 24,
-    fontWeight : 'bold',
-    color : 'white',
-    marginBottom : 4,
+
+  tripInfo: { padding: 16 },
+  tripTitle: { fontSize: 18, fontWeight: "bold" },
+  tripDestination: { color: "#6b7280", marginVertical: 4 },
+  tripDate: { color: "#374151", fontSize: 14 },
+
+  emptyText: {
+    textAlign: "center",
+    color: "#9ca3af",
+    marginTop: 40,
   },
-  tripLocation : {
-    flexDirection : 'row',
-    alignItems : 'center',
-    gap : 4,
-  },
-  tripLocationText : {
-    color : 'rgba(255,255,255,0.9)',
-    fontSize : 14,
-  },
-  tripCardInfo : {
-    padding : 16,
-    flexDirection : 'row',
-    justifyContent : 'space-between',
-    alignItems : 'center',
-  },
-  tripDate : {
-    flexDirection : 'row',
-    alignItems : 'center',
-    gap : 8,
-  },
-  tripDateText : {
-    color : '#6b7280',
-    fontSize : 14,
-  },
-  tripPhotos : {
-    flexDirection : 'row',
-    alignItems : 'center'
-  },
-  photoCircle : {
-    width : 32,
-    height : 32,
-    borderRadius : 16,
-    backgroundColor : '#d1d5db',
-    borderWidth : 2,
-    borderColor : 'white',
-    marginLeft : -8,
-  },
-  photoCircle2 : {
-    backgroundColor : '#d1d5db',
-  },
-  photoCircle3 : {
-    backgroundColor : '#9ca3af',
-    alignItems : 'center',
-    justifyContent : 'center',
-  },
-  tripPhotoCount : {
-    fontSize : 10,
-    color : 'white',
-    fontWeight : '600',
-  },
-  fabButton : {
-    position : 'absolute',
-    bottom : 80,
-    right : 24,
-    width : 56,
-    height : 56,
-    backgroundColor : '#a855f7',
-    borderRadius : 28,
-    justifyContent : 'center',
-    alignItems : 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
+
+  fabButton: {
+    position: "absolute",
+    bottom: 80,
+    right: 24,
+    width: 56,
+    height: 56,
+    backgroundColor: "#a855f7",
+    borderRadius: 28,
+    justifyContent: "center",
+    alignItems: "center",
+    elevation: 6,
   },
 });
