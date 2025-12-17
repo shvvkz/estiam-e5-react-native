@@ -134,15 +134,15 @@ export default function HomeScreen() {
         </View>
 
         {upcomingTrips.map((trip) => {
-          const startDate = parseDate(trip.startDate);
 
           const daysLeft = Math.max(
             0,
             Math.ceil(
-              (startDate.getTime() - Date.now()) /
+              (new Date(trip.startDate).getTime() - Date.now()) /
               (1000 * 60 * 60 * 24)
             )
           );
+
 
 
           return (
@@ -160,7 +160,12 @@ export default function HomeScreen() {
                 <View style={styles.tripDate}>
                   <Ionicons name="calendar-outline" size={16} color="#6b7280" />
                   <Text style={styles.tripDateText}>
-                    {startDate.toLocaleDateString()}
+                    {new Date(trip.startDate).toLocaleDateString("fr-FR", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    })}
+
                   </Text>
                 </View>
                 <View style={styles.tripBadge}>
