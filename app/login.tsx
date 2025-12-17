@@ -64,12 +64,6 @@ export default function LoginScreen() {
                         colors={['#a855f7', '#ec4899']}
                         style={styles.header}
                     >
-                        <TouchableOpacity
-                            onPress={() => router.back()}
-                            style={styles.backButton}
-                        >
-                            <Ionicons name="arrow-back" size={24} color="#fff" />
-                        </TouchableOpacity>
                         <Text style={styles.headerTitle}>
                             {isLoginMode
                                 ? 'Connectez-vous à votre compte'
@@ -111,8 +105,14 @@ export default function LoginScreen() {
 
                         </View>
 
-                        <View>
-                            <Ionicons name="lock-closed-outline" size={24} color="#6b7280" style={styles.inputIcon} />
+                        <View style={styles.inputContainer}>
+                            <Ionicons
+                                name="lock-closed-outline"
+                                size={24}
+                                color="#6b7280"
+                                style={styles.inputIcon}
+                            />
+
                             <TextInput
                                 style={styles.input}
                                 placeholder="Mot de passe"
@@ -128,13 +128,16 @@ export default function LoginScreen() {
                             <TouchableOpacity
                                 onPress={() => setshowPassword(!showPassword)}
                                 style={styles.eyeButton}
+                                hitSlop={10}
                             >
                                 <Ionicons
                                     name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                                    size={24}
-                                    color="#fff" />
+                                    size={22}
+                                    color="#6b7280"
+                                />
                             </TouchableOpacity>
                         </View>
+
                         <TouchableOpacity
                             onPress={handleSubmit}
                             style={[styles.submitButton, isLoading && styles.submitButtonDisabled]}
