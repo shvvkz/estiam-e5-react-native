@@ -132,7 +132,10 @@ export default function TripsCalendarScreen() {
             <TripCalendarCard
               key={`${trip.id}-${selectedDate}`}
               trip={trip}
-              onOpen={() => router.push(`/trips/${trip.id}`)}
+              onOpen={() => router.push({
+                pathname: "/trips/[id]",
+                params: { id: trip.id, from: "calendar" },
+              })}
             />
           ))}
 

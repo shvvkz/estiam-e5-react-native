@@ -127,6 +127,8 @@ export default function TripDetailsScreen() {
       router.replace({ pathname: "/(tabs)/trips" });
     } else if (from === "map") {
       router.replace({ pathname: "/(tabs)/trips/map" });
+    } else if (from === "calendar") {
+      router.replace({ pathname: "/(tabs)/trips/calendar" });
     } else {
       router.replace({ pathname: "/" });
     }
@@ -158,7 +160,7 @@ export default function TripDetailsScreen() {
         {/* Header + Cover */}
         <View style={styles.headerContainer}>
           <LinearGradient colors={["#a855f7", "#ec4899"]} style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <TouchableOpacity onPress={goBack} style={styles.backButton}>
               <Ionicons name="arrow-back" size={24} color="#fff" />
             </TouchableOpacity>
 
