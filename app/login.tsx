@@ -6,6 +6,20 @@ import { useState } from "react";
 import { Alert, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+/**
+ * LoginScreen
+ *
+ * Authentication screen handling both login and registration flows.
+ *
+ * Features:
+ * - Toggle between login and register modes
+ * - Form validation for required fields
+ * - Secure password input with visibility toggle
+ * - Integration with authentication context
+ *
+ * This screen does not handle navigation guards directly.
+ * Redirection logic is managed at the root layout level.
+ */
 export default function LoginScreen() {
     const router = useRouter();
     const { login, register, isLoading, refreshAuth } = useAuth();
@@ -16,6 +30,20 @@ export default function LoginScreen() {
     const [name, setName] = useState('');
     const [showPassword, setshowPassword] = useState(false);
 
+    /**
+     * handleSubmit
+     *
+     * Handles form submission for authentication.
+     *
+     * Behavior:
+     * - Validates required fields depending on the current mode
+     * - Calls login or registration logic through the auth context
+     * - Refreshes authentication state after success
+     * - Displays user-friendly error messages on failure
+     *
+     * This function is intentionally kept UI-agnostic
+     * and focuses only on authentication logic.
+     */
     const handleSubmit = async () => {
 
         if (!email || !password) {

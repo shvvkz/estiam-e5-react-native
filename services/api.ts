@@ -14,7 +14,32 @@ export interface CreateTripPayload {
   location: TripLocation;
 }
 
+/**
+ * API
+ *
+ * Centralized service layer responsible for all trip-related
+ * network operations and offline synchronization.
+ *
+ * This module abstracts:
+ * - Remote API calls
+ * - Authentication handling
+ * - Offline fallback logic
+ * - Local cache synchronization
+ *
+ * It is designed to be the single source of truth
+ * for trip data access across the application.
+ */
 export const API = {
+  /**
+   * uploadImage
+   *
+   * Uploads a local image file to the backend and returns its public URL.
+   *
+   * This method uses multipart/form-data and relies on a relaxed typing
+   * strategy due to React Native FormData limitations.
+   *
+   * Throws an error if the upload fails.
+   */
   async uploadImage(uri: string): Promise<string> {
     const formData = new FormData();
 
@@ -47,6 +72,22 @@ export const API = {
     return data.url;
   },
 
+  /**
+   * createTrip
+   *
+   * Creates a new trip on the backend.
+   *
+   * Responsibilities:
+   * - Ensure the user is online
+   * - Ensure the user is authenticated
+   * - Send the trip payload to the API
+   * - Refresh and synchronize the local offline cache after creation
+   *
+   * Throws an error if:
+   * - The user is offline
+   * - The user is not authenticated
+   * - The API request fails
+   */
   async createTrip(payload: CreateTripPayload): Promise<Trip> {
     const isOnline = await OFFLINE.checkIsOnline();
 
@@ -91,6 +132,22 @@ export const API = {
     return createdTrip;
   },
 
+  /**
+   * getTrips
+   *
+   * Retrieves the list of trips with offline-first behavior.
+   *
+   * Behavior:
+   * - If online: fetch trips from the backend and update local cache
+   * - If offline or fetch fails: return cached trips
+   *
+   * Notes:
+   * - Cached data is mapped defensively to ensure a valid Trip shape
+   * - A loose typing strategy is used when reading cached data
+   *   due to the absence of runtime schema validation
+   *
+   * Returns an empty array if no data is available.
+   */
   async getTrips(): Promise<Trip[]> {
     const isOnline = await OFFLINE.checkIsOnline();
 
@@ -109,7 +166,7 @@ export const API = {
       } catch (error) {
         console.log("Erreur fetch, utilisation du cache", error);
         const cached = await OFFLINE.getCachedTrips();
-        return (cached || []).map((trip: any) => ({
+        return (cached || []).map((trip: Trip) => ({
           id: trip.id ?? "",
           title: trip.title ?? "",
           destination: trip.destination ?? "",
@@ -124,7 +181,7 @@ export const API = {
     } else {
       console.log("Offline, utilisation du cache");
       const cached = await OFFLINE.getCachedTrips();
-      return (cached || []).map((trip: any) => ({
+      return (cached || []).map((trip: Trip) => ({
         id: trip.id ?? "",
         title: trip.title ?? "",
         destination: trip.destination ?? "",

@@ -21,6 +21,25 @@ import { favoritesService } from "@/services/favorites";
 import { Trip } from "@/models/trip";
 const { width, height } = Dimensions.get("window");
 
+/**
+ * TripDetailsScreen
+ *
+ * Screen responsible for displaying detailed information about a single trip.
+ *
+ * Responsibilities:
+ * - Fetch the trip from the API based on the route param `id`
+ * - Display trip metadata (title, destination, dates, description)
+ * - Display and preview trip photos
+ * - Handle favorites state (toggle + sync with storage)
+ *
+ * Navigation:
+ * - The back behavior depends on the `from` route param
+ *   (e.g. trips list, map view, or home).
+ *
+ * Data freshness:
+ * - Uses `useFocusEffect` to ensure data is always up to date
+ *   when returning to this screen.
+ */
 export default function TripDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -33,6 +52,17 @@ export default function TripDetailsScreen() {
   const [initialIndex, setInitialIndex] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
 
+  /**
+  * Reloads the trip data every time the screen gains focus.
+  *
+  * Why:
+  * - Ensures the trip reflects the latest state
+  *   (photos added, favorite toggled, etc.)
+  * - Avoids stale data when navigating back from modals or other screens
+  *
+  * Note:
+  * - `useFocusEffect` is intentionally used instead of `useEffect`
+  */
   useFocusEffect(
     useCallback(() => {
       let active = true;
@@ -71,14 +101,27 @@ export default function TripDetailsScreen() {
   );
 
 
+  /**
+  * Toggles the favorite state of the current trip
+  * and keeps local UI state in sync with the favorites service.
+  */
   const toggleFavorite = async () => {
     if (!trip) return;
     const value = await favoritesService.toggleFavorite(trip.id);
     setIsFavorite(value);
   };
 
-  const { from } = useLocalSearchParams();
+  const { from } = useLocalSearchParams<{ from?: string }>();
 
+  /**
+  * Handles backward navigation depending on the origin screen.
+  *
+  * - "trips" → Trips list
+  * - "map"   → Map view
+  * - default → Home
+  *
+  * This prevents always falling back to the home screen.
+  */
   const goBack = () => {
     if (from === "trips") {
       router.replace({ pathname: "/(tabs)/trips" });

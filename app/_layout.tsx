@@ -14,6 +14,26 @@ export const unstable_settings = {
   anchor: '(tabs)',
 };
 
+/**
+ * RootLayoutContent
+ *
+ * Core layout component responsible for:
+ * - Applying the global navigation theme (light / dark)
+ * - Handling authentication-based routing guards
+ * - Displaying offline and synchronization status banners
+ * - Defining the main navigation stack
+ *
+ * Authentication flow:
+ * - Redirects unauthenticated users to the login screen
+ * - Prevents authenticated users from accessing the login screen
+ *
+ * Offline handling:
+ * - Displays an offline banner when the device is disconnected
+ * - Displays a synchronization banner when pending actions exist
+ *
+ * This component contains all runtime logic related to
+ * navigation state and application connectivity.
+ */
 function RootLayoutContent() {
   const colorScheme = useColorScheme();
   const { isOnline, pendingCount, isSyncing, syncNow } = useOffline();
@@ -56,7 +76,7 @@ function RootLayoutContent() {
             name={isSyncing ? "sync" : "sync-outline"}
             size={16}
             color="#fff"
-          />E
+          />
           <Text style={styles.bannerText}>
             {isSyncing
               ? 'Synchronisation...'

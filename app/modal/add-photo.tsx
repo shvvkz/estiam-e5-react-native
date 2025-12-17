@@ -11,16 +11,43 @@ import * as ImagePicker from "expo-image-picker";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { API } from "@/services/api";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import { Trip } from "@/models/trip";
 
+/**
+ * AddPhotoModal
+ *
+ * Modal screen allowing the user to add a photo to an existing trip.
+ *
+ * The screen supports two modes:
+ * - Fixed trip mode: when a tripId is provided via route params,
+ *   the photo is directly attached to that trip.
+ * - Selection mode: when no tripId is provided, the user must
+ *   select a trip before adding a photo.
+ *
+ * The user can choose to add a photo either from the gallery
+ * or directly from the camera.
+ *
+ * After a successful upload, the modal automatically closes
+ * and returns to the previous screen.
+ */
 export default function AddPhotoModal() {
   const router = useRouter();
   const { tripId } = useLocalSearchParams<{ tripId?: string }>();
   const isFixedTrip = Boolean(tripId);
 
-  const [trips, setTrips] = useState<any[]>([]);
-  const [selectedTrip, setSelectedTrip] = useState<any>(null);
+  const [trips, setTrips] = useState<Trip[]>([]);
+  const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
   const [loading, setLoading] = useState(false);
 
+  /**
+   * Trips loading effect
+   *
+   * Loads the list of available trips when the modal is opened
+   * in selection mode (no fixed tripId provided).
+   *
+   * This effect is skipped entirely when the modal is opened
+   * for a specific trip in order to avoid unnecessary API calls.
+   */
   useEffect(() => {
     if (isFixedTrip) return;
 
@@ -29,8 +56,24 @@ export default function AddPhotoModal() {
     });
   }, [isFixedTrip]);
 
+  /**
+   * addPhoto
+   *
+   * Handles the complete workflow of adding a photo to a trip.
+   *
+   * Responsibilities:
+   * - Determine the target trip (fixed via route params or selected by the user)
+   * - Request the appropriate permissions (camera or media library)
+   * - Launch the image picker
+   * - Upload the selected image to the backend
+   * - Attach the uploaded image URL to the target trip
+   *
+   * @param fromCamera - If true, opens the device camera.
+   *                     If false, opens the media library.
+   */
   const addPhoto = async (fromCamera: boolean) => {
     const targetTripId = isFixedTrip ? tripId : selectedTrip?.id;
+
     if (!targetTripId) {
       Alert.alert("Erreur", "Sélectionne un voyage");
       return;
@@ -69,27 +112,43 @@ export default function AddPhotoModal() {
   };
 
   return (
-    <SafeAreaView>
-      <Text>Add Photo</Text>
+    <SafeAreaView style={styles.container}>
+      <Text style={styles.title}>Add Photo</Text>
+
+      {!isFixedTrip && trips.length === 0 && (
+        <Text style={styles.emptyText}>Aucun voyage disponible</Text>
+      )}
 
       {!isFixedTrip &&
         trips.map(trip => (
           <TouchableOpacity
             key={trip.id}
+            style={[
+              styles.tripItem,
+              selectedTrip?.id === trip.id && styles.selected,
+            ]}
             onPress={() => setSelectedTrip(trip)}
           >
-            <Text>{trip.title}</Text>
+            <Text style={styles.tripTitle}>{trip.title}</Text>
           </TouchableOpacity>
         ))}
 
-      <TouchableOpacity onPress={() => addPhoto(false)} disabled={loading}>
-        <Ionicons name="image-outline" size={24} />
-        <Text>Galerie</Text>
+      <TouchableOpacity
+        style={[styles.button, loading && styles.disabled]}
+        onPress={() => addPhoto(false)}
+        disabled={loading}
+      >
+        <Ionicons name="image-outline" size={24} color="#fff" />
+        <Text style={styles.buttonText}>Galerie</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => addPhoto(true)} disabled={loading}>
-        <Ionicons name="camera-outline" size={24} />
-        <Text>Caméra</Text>
+      <TouchableOpacity
+        style={[styles.button, loading && styles.disabled]}
+        onPress={() => addPhoto(true)}
+        disabled={loading}
+      >
+        <Ionicons name="camera-outline" size={24} color="#fff" />
+        <Text style={styles.buttonText}>Caméra</Text>
       </TouchableOpacity>
     </SafeAreaView>
   );
