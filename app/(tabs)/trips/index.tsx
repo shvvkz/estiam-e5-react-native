@@ -16,6 +16,8 @@ import { API } from "@/services/api";
 import { favoritesService } from "@/services/favorites";
 import { IMAGES_SOURCES } from "@/app/(tabs)/index";
 import { Trip } from "@/models/trip";
+import { LinearGradient } from "expo-linear-gradient";
+import { Animated, Easing } from "react-native";
 
 const tabs = ["All", "Upcoming", "Past", "Favorites"] as const;
 type Tab = (typeof tabs)[number];
@@ -131,12 +133,64 @@ export default function TripsScreen() {
       );
   }, [trips, favorites, selectedTab, search]);
 
-  return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Trips</Text>
+  const [fabOpen, setFabOpen] = useState(false);
+  const fabAnim = useState(new Animated.Value(0))[0];
 
+  const toggleFab = () => {
+    Animated.timing(fabAnim, {
+      toValue: fabOpen ? 0 : 1,
+      duration: 200,
+      easing: Easing.out(Easing.ease),
+      useNativeDriver: true,
+    }).start();
+
+    setFabOpen(!fabOpen);
+  };
+
+  const mapFabStyle = {
+    transform: [
+      {
+        translateY: fabAnim.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0, -70],
+        }),
+      },
+      {
+        scale: fabAnim,
+      },
+    ],
+    opacity: fabAnim,
+  };
+
+  const calendarFabStyle = {
+    transform: [
+      {
+        translateY: fabAnim.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0, -140],
+        }),
+      },
+      {
+        scale: fabAnim,
+      },
+    ],
+    opacity: fabAnim,
+  };
+
+
+  return (
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <LinearGradient colors={['#a855f7', '#ec4899']} style={styles.header}>
+        <View style={styles.headerTop}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Trips Calendar</Text>
+          <Text style={styles.placeholder}></Text>
+        </View>
+      </LinearGradient>
+      <View style={styles.header}>
         {/* Search */}
         <View style={styles.searchBarContainer}>
           <View style={styles.searchBar}>
@@ -245,37 +299,77 @@ export default function TripsScreen() {
       </ScrollView>
 
       {/* FAB */}
-      <TouchableOpacity
-        style={[styles.fabButton, styles.fabLeft]}
-        onPress={() => router.push("/trips/map")}
-      >
-        <Ionicons name="map-outline" size={26} color="#fff" />
-      </TouchableOpacity>
+      <View style={styles.fabContainer}>
+        <Animated.View style={[styles.fabWrapper, calendarFabStyle]}>
+          <TouchableOpacity
+            style={styles.fabButton}
+            onPress={() => {
+              toggleFab();
+              router.push("/trips/calendar");
+            }}
+          >
+            <Ionicons name="calendar-outline" size={24} color="#fff" />
+          </TouchableOpacity>
+        </Animated.View>
 
-      <TouchableOpacity
-        style={[styles.fabButton, styles.fabRight]}
-        onPress={() => router.push("/modal/add-trip")}
-      >
-        <Ionicons name="add" size={28} color="white" />
-      </TouchableOpacity>
+        <Animated.View style={[styles.fabWrapper, mapFabStyle]}>
+          <TouchableOpacity
+            style={styles.fabButton}
+            onPress={() => {
+              toggleFab();
+              router.push("/trips/map");
+            }}
+          >
+            <Ionicons name="map-outline" size={24} color="#fff" />
+          </TouchableOpacity>
+        </Animated.View>
+
+        <TouchableOpacity
+          style={[styles.fabButton, styles.mainFab]}
+          onPress={toggleFab}
+          activeOpacity={0.9}
+        >
+          <Ionicons
+            name={fabOpen ? "close" : "apps"}
+            size={28}
+            color="#fff"
+          />
+        </TouchableOpacity>
+      </View>
+
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f9fafb" },
-
   header: {
-    backgroundColor: "#fff",
     paddingHorizontal: 24,
     paddingTop: 16,
-    paddingBottom: 16,
+    paddingBottom: 24,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: "#111827",
-    marginBottom: 16,
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  placeholder: {
+    width: 40,
   },
 
   searchBarContainer: { flexDirection: "row" },
@@ -335,8 +429,6 @@ const styles = StyleSheet.create({
   },
 
   fabButton: {
-    position: "absolute",
-    bottom: 20,
     width: 56,
     height: 56,
     backgroundColor: "#a855f7",
@@ -345,10 +437,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     elevation: 6,
   },
-  fabRight: {
+
+  fabContainer: {
+    position: "absolute",
     right: 24,
+    bottom: 24,
+    alignItems: "center",
   },
-  fabLeft: {
-    left: 24,
+
+  fabWrapper: {
+    position: "absolute",
+    bottom: 0,
   },
+
+  mainFab: {
+    backgroundColor: "#a855f7",
+  },
+
 });

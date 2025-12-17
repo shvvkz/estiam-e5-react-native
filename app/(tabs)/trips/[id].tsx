@@ -158,8 +158,8 @@ export default function TripDetailsScreen() {
         {/* Header + Cover */}
         <View style={styles.headerContainer}>
           <LinearGradient colors={["#a855f7", "#ec4899"]} style={styles.header}>
-            <TouchableOpacity onPress={goBack}>
-              <Ionicons name="arrow-back" size={24} />
+            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color="#fff" />
             </TouchableOpacity>
 
 
@@ -278,11 +278,13 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
     paddingHorizontal: 20,
   },
-  backBtn: {
-    position: "absolute",
-    top: 20,
-    left: 20,
-    zIndex: 10,
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   favoriteBtn: {
     position: "absolute",

@@ -18,7 +18,7 @@ import { Calendar } from "react-native-calendars";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { API } from "@/services/api";
-import { TripLocation } from "@/models/trip";
+import { ExistingTrip, TripLocation } from "@/models/trip";
 
 /**
  * AddTripModal
@@ -251,7 +251,7 @@ export default function AddTripModal() {
    * Validates the trip form and orchestrates the full trip creation process.
    *
    * Steps:
-   * - Validate required fields and destination format
+   * - Validate required fields, destination format and date overlaps
    * - Upload selected images
    * - Resolve geographic location (user location or geocoding)
    * - Send the final payload to the backend API
@@ -274,6 +274,24 @@ export default function AddTripModal() {
 
     try {
       setIsUploading(true);
+
+      const existingTrips = await API.getTrips();
+
+      const overlappingTrip = isTripOverlapping(
+        startDate,
+        endDate,
+        existingTrips
+      );
+
+      if (overlappingTrip) {
+        Alert.alert(
+          "Conflit de dates",
+          `Ce voyage entre en conflit avec "${overlappingTrip.title}" (${overlappingTrip.startDate} → ${overlappingTrip.endDate})`
+        );
+        setIsUploading(false);
+        return;
+      }
+
       setUploadProgress(0);
 
       const { photos, coverImage } = await uploadImages();
@@ -306,6 +324,26 @@ export default function AddTripModal() {
       setIsUploading(false);
     }
   };
+
+
+  const isTripOverlapping = (
+    newStart: string,
+    newEnd: string,
+    existingTrips: ExistingTrip[]
+  ): ExistingTrip | null => {
+    const start = new Date(newStart).getTime();
+    const end = new Date(newEnd).getTime();
+
+    return (
+      existingTrips.find((trip) => {
+        const tripStart = new Date(trip.startDate).getTime();
+        const tripEnd = new Date(trip.endDate).getTime();
+
+        return start <= tripEnd && end >= tripStart;
+      }) || null
+    );
+  };
+
 
   return (
     <SafeAreaView style={styles.container}>

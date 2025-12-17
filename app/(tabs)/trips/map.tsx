@@ -63,11 +63,8 @@ export default function TripsMapScreen() {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity
-        onPress={() => router.replace("/trips")}
-        style={{ position: "absolute", top: 40, left: 20, zIndex: 10 }}
-      >
-        <Ionicons name="arrow-back" size={24} />
+      <TouchableOpacity onPress={() => router.replace("/trips")} style={styles.backButton}>
+        <Ionicons name="arrow-back" size={24} color="#fff" />
       </TouchableOpacity>
 
       <MapView
@@ -113,4 +110,16 @@ export default function TripsMapScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: "absolute",
+    top: 40,
+    left: 20,
+    zIndex: 10
+  },
 });
