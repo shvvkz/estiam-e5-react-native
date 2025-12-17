@@ -1,108 +1,145 @@
-
-import { useAuth } from '@/contexts/auth-context';
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
-import { View, StyleSheet, ScrollView, Text, TouchableOpacity, Alert } from 'react-native';
-
+import { useCallback, useState } from "react";
+import { View, StyleSheet, ScrollView, Text, TouchableOpacity, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { useRouter, useFocusEffect } from "expo-router";
+
+import { useAuth } from "@/contexts/auth-context";
+import { API } from "@/services/api";
+import { favoritesService } from "@/services/favorites";
+import type { Trip } from "@/models/trip";
 
 export default function ProfileScreen() {
-    const router = useRouter();
-    const { logout } = useAuth();
-    const stats = [
-        { label: 'Voyages', value: '12', icon: 'map-outline', colors: ['#a855f7', '#ec4899'] as const },
-        { label: 'Photos', value: '250', icon: 'camera', colors: ['#3b82f6', '#06b6d4'] as const },
-        { label: 'Favoris', value: '12', icon: 'heart-outline', colors: ['#ef4444', '#f43f5e'] as const }
+  const router = useRouter();
+  const { logout, user } = useAuth();
 
-    ];
+  const [stats, setStats] = useState({
+    trips: 0,
+    photos: 0,
+    favorites: 0,
+  });
 
+  const loadStats = async () => {
+    try {
+      const trips: Trip[] = await API.getTrips();
+      const favorites = await favoritesService.getFavorites();
 
-    return (
-        <SafeAreaView style={styles.container} edges={['top']}>
-            <ScrollView showsVerticalScrollIndicator={false}>
-                {/*Header*/}
-                <LinearGradient
-                    colors={['#a855f7', '#ec4899']}
-                    style={styles.header}
-                >
+      setStats({
+        trips: trips.length,
+        photos: trips.reduce((sum, t) => sum + (t.photos?.length || 0), 0),
+        favorites: favorites.length,
+      });
+    } catch (e) {
+      console.warn("Erreur chargement stats profil", e);
+    }
+  };
 
-                    <Text style={styles.headerTitle}>Profil</Text>
+  useFocusEffect(
+    useCallback(() => {
+      loadStats();
+    }, [])
+  );
 
-                    {/*Profile card*/}
+  const statsConfig = [
+    {
+      label: "Voyages",
+      value: stats.trips,
+      icon: "map-outline",
+      colors: ["#a855f7", "#ec4899"] as const,
+    },
+    {
+      label: "Photos",
+      value: stats.photos,
+      icon: "camera",
+      colors: ["#3b82f6", "#06b6d4"] as const,
+    },
+    {
+      label: "Favoris",
+      value: stats.favorites,
+      icon: "heart-outline",
+      colors: ["#ef4444", "#f43f5e"] as const,
+    },
+  ];
 
-                    <View style={styles.profileCard}>
-                        <View style={styles.profileHeader}>
-                            <View style={styles.avatar}>
-                                <Text style={styles.avatarEmoji}>😎​</Text>
-                            </View>
-                            <View style={styles.profileInfo}>
-                                <Text style={styles.profileName}>Odilon Hema</Text>
-                                <Text style={styles.profileEmail}>dummy@mail.com</Text>
-                            </View>
-                        </View>
-                        {/*Stats*/}
-                        <View style={styles.statsGrid}>
-                            {
-                                stats.map((stat, idx) => (
-                                    <View key={idx} style={styles.statItem}>
-                                        <LinearGradient
-                                            colors={stat.colors}
-                                            style={styles.statIcon}>
-                                            <Ionicons name={stat.icon as any} size={24} color="white" />
-                                        </LinearGradient>
-                                        <Text style={styles.statValue}>{stat.value}</Text>
-                                        <Text style={styles.statLabel}>{stat.label}</Text>
+  return (
+    <SafeAreaView style={styles.container} edges={["top"]}>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <LinearGradient colors={["#a855f7", "#ec4899"]} style={styles.header}>
+          <Text style={styles.headerTitle}>Profil</Text>
 
-                                    </View>
-                                ))
-                            }
-                        </View>
-                    </View>
-                </LinearGradient>
+          {/* Profile card */}
+          <View style={styles.profileCard}>
+            <View style={styles.profileHeader}>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarEmoji}>😎</Text>
+              </View>
 
+              <View style={styles.profileInfo}>
+                <Text style={styles.profileName}>
+                  {user?.name || "Utilisateur"}
+                </Text>
+                <Text style={styles.profileEmail}>
+                  {user?.email || "—"}
+                </Text>
+              </View>
+            </View>
 
-                {/*Content*/}
-                <View style={styles.content}>
-                    <TouchableOpacity
-                        style={styles.menuItem}
-                        onPress={async () => {
-                            Alert.alert(
-                                'Déconnexion',
-                                'Etes-vous sûr de vouloir vous déconecter ?',
-                                [
-                                    { text: 'Annuler', style: 'cancel' },
-                                    {
-                                        text: 'Déconnexion',
-                                        style: 'destructive',
-                                        onPress: async () => {
-                                            await logout();
-                                            router.replace('/login');
-                                        }
-                                    }
-                                ]
-                            )
-                        }}
-                    >
-                        <LinearGradient
-                            colors={['#ef4444', '#f43f5e']}
-                            style={styles.menuItemIcon}
-                        >
-                            <Ionicons name='log-out-outline' size={24} color='white' />
-                        </LinearGradient>
-                        <View>
-                            <Text style={styles.menuItemTitle}>Déconnexion</Text>
-                            <Text style={styles.menuItemSubTitle}>Se déconnecter de votre compte</Text>
-
-                        </View>
-                    </TouchableOpacity>
-                    
+            {/* Stats */}
+            <View style={styles.statsGrid}>
+              {statsConfig.map((stat, idx) => (
+                <View key={idx} style={styles.statItem}>
+                  <LinearGradient colors={stat.colors} style={styles.statIcon}>
+                    <Ionicons name={stat.icon as any} size={24} color="white" />
+                  </LinearGradient>
+                  <Text style={styles.statValue}>{stat.value}</Text>
+                  <Text style={styles.statLabel}>{stat.label}</Text>
                 </View>
-            </ScrollView>
-        </SafeAreaView>
+              ))}
+            </View>
+          </View>
+        </LinearGradient>
 
-    )
+        {/* Content */}
+        <View style={styles.content}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() =>
+              Alert.alert(
+                "Déconnexion",
+                "Êtes-vous sûr de vouloir vous déconnecter ?",
+                [
+                  { text: "Annuler", style: "cancel" },
+                  {
+                    text: "Déconnexion",
+                    style: "destructive",
+                    onPress: async () => {
+                      await logout();
+                      router.replace("/login");
+                    },
+                  },
+                ]
+              )
+            }
+          >
+            <LinearGradient colors={["#ef4444", "#f43f5e"]} style={styles.menuItemIcon}>
+              <Ionicons name="log-out-outline" size={24} color="white" />
+            </LinearGradient>
+
+            <View>
+              <Text style={styles.menuItemTitle}>Déconnexion</Text>
+              <Text style={styles.menuItemSubTitle}>
+                Se déconnecter de votre compte
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
 }
+
 
 const styles = StyleSheet.create({
     container: {

@@ -38,6 +38,7 @@ export default function AddTripModal() {
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const DESTINATION_REGEX = /^[A-Za-zÀ-ÿ' -]+,\s*[A-Za-zÀ-ÿ' -]+$/;
 
   const [locationCoords, setLocationCoords] =
     useState<LocationCoords | null>(null);
@@ -205,6 +206,14 @@ export default function AddTripModal() {
   const handleSaveTrip = async () => {
     if (!tripTitle || !destination || !startDate || !endDate) {
       Alert.alert("Erreur", "Tous les champs obligatoires sont requis");
+      return;
+    }
+
+    if (!DESTINATION_REGEX.test(destination)) {
+      Alert.alert(
+        "Erreur",
+        "La destination doit être au format : Ville, Pays"
+      );
       return;
     }
 

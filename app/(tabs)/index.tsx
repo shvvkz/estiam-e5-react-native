@@ -88,7 +88,7 @@ export default function HomeScreen() {
           <View style={styles.headerTop}>
             <View>
               <Text style={styles.greentingText}>Hello</Text>
-              <Text style={styles.firstnameText}>Odilon!</Text>
+              <Text style={styles.firstnameText}>shvvkz!</Text>
             </View>
             <TouchableOpacity
               style={styles.notificationBtn}
@@ -163,7 +163,7 @@ export default function HomeScreen() {
                 </View>
                 <View style={styles.tripBadge}>
                   <Text style={styles.tripBadgeText}>
-                    Dans {daysLeft} jours
+                    In {daysLeft} day{daysLeft !== 1 ? 's' : ''}
                   </Text>
                 </View>
               </View>
