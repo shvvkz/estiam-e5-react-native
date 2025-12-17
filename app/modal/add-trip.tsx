@@ -36,7 +36,7 @@ export default function AddTripModal() {
     const [uploadedPhotos, setuploadedPhotos] = useState<Array<string>>([]);
     const [coverImage, setcoverImage] = useState<string>("");
 
-    
+
 
     const openAppSettings = () => {
         Linking.openSettings();
@@ -97,6 +97,15 @@ export default function AddTripModal() {
         }
     };
 
+    const formatDateInput = (value: string) => {
+        const digits = value.replace(/\D/g, '').slice(0, 8);
+
+        if (digits.length <= 2) return digits;
+        if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+        return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+    };
+
+
     const takePhoto = async () => {
 
         try {
@@ -155,76 +164,73 @@ export default function AddTripModal() {
 
 
     };
-    
 
-    const uploadImages = async (uploadedPhotos : string[], coverImage:  string) => {
-                    if (selectedImages.length > 0) {
 
-                const totalImages = selectedImages.length;
+    const uploadImages = async (): Promise<{ photos: string[]; coverImage: string }> => {
+        const uploadedPhotos: string[] = [];
+        let coverImage = '';
 
-                for (let i = 0; i < selectedImages.length; i++) {
-                    const imageUri = selectedImages[i];
-                    const uploadedUrl = await API.uploadImage(imageUri);
-                    uploadedPhotos.push(uploadedUrl);
+        if (selectedImages.length === 0) {
+            return { photos: [], coverImage: '' };
+        }
 
-                    if (i == 0) {
-                        coverImage = uploadedUrl;
-                    }
+        const totalImages = selectedImages.length;
 
-                    const progress = Math.round(((i + 1) / totalImages) * 100);
-                    setUploadProgress(progress);
-                }
+        for (let i = 0; i < selectedImages.length; i++) {
+            const imageUri = selectedImages[i];
+            const uploadedUrl = await API.uploadImage(imageUri);
 
-                setuploadedPhotos(uploadedPhotos);
-                setcoverImage(coverImage);
+            uploadedPhotos.push(uploadedUrl);
+
+            if (i === 0) {
+                coverImage = uploadedUrl;
             }
 
-    }
+            setUploadProgress(Math.round(((i + 1) / totalImages) * 100));
+        }
+
+        return { photos: uploadedPhotos, coverImage };
+    };
+
 
     const handleSaveTrip = async () => {
-
+        if (!tripTitle || !destination || !startDate || !endDate) {
+            Alert.alert('Erreur', 'Tous les champs obligatoires doivent être remplis');
+            return;
+        }
 
         try {
-
             setIsUploading(true);
             setUploadProgress(0);
 
-           uploadImages(uploadedPhotos, coverImage);
+            const { photos, coverImage } = await uploadImages();
 
-            let trip = {
+            const trip = {
                 title: tripTitle,
                 destination,
                 startDate,
                 endDate,
                 description,
                 image: coverImage,
-                photos: selectedImages
+                photos,
             };
-
 
             const newTrip = await API.createTrip(trip);
 
             console.log('Voyage créé', newTrip);
 
-            setIsUploading(false);
-
-            setTimeout(() => {
-                Alert.alert(
-                    'Succès',
-                    'Votre voyage a été créé !',
-                    [
-                        { text: 'OK', onPress: () => router.back }
-                    ]
-                )
-            }, 500);
+            Alert.alert('Succès', 'Votre voyage a été créé !', [
+                { text: 'OK', onPress: () => router.back() },
+            ]);
 
         } catch (error) {
-            console.log('Erreur:', error);
-            setIsUploading(false);
+            console.error(error);
             Alert.alert('Erreur', 'Impossible de créer le voyage');
-
+        } finally {
+            setIsUploading(false);
         }
     };
+
 
     return (
         <SafeAreaView style={styles.container} edges={['bottom']}>
@@ -281,6 +287,20 @@ export default function AddTripModal() {
                     </Text>
                 </View>
                 {/* Dates */}
+                <View style={styles.dateColumn}>
+                    <Text style={styles.label}>Date de départ</Text>
+                    <View style={styles.inputWithIcon}>
+                        <Ionicons name="calendar-outline" size={24} color="#6b7280" />
+                        <TextInput
+                            style={styles.inputFlex}
+                            placeholder="JJ/MM/AAAA"
+                            keyboardType="number-pad"
+                            value={startDate}
+                            onChangeText={(text) => setStartDate(formatDateInput(text))}
+                        />
+
+                    </View>
+                </View>
                 <View style={styles.section}>
                     <View style={styles.dateRow}>
                         <View style={styles.dateColumn}>
@@ -290,10 +310,11 @@ export default function AddTripModal() {
                                 <TextInput
                                     style={styles.inputFlex}
                                     placeholder="JJ/MM/AAAA"
+                                    keyboardType="number-pad"
                                     value={endDate}
-                                    onChangeText={setEndDate}
-                                    placeholderTextColor="#9ca3af"
+                                    onChangeText={(text) => setEndDate(formatDateInput(text))}
                                 />
+
                             </View>
                         </View>
                     </View>
