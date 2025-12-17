@@ -1,20 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
-  StyleSheet,
   Alert,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import * as ImagePicker from 'expo-image-picker';
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { API } from '@/services/api';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+  StyleSheet,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import * as ImagePicker from "expo-image-picker";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { API } from "@/services/api";
+import { useRouter, useLocalSearchParams } from "expo-router";
 
 export default function AddPhotoModal() {
   const router = useRouter();
-
   const { tripId } = useLocalSearchParams<{ tripId?: string }>();
   const isFixedTrip = Boolean(tripId);
 
@@ -25,103 +24,72 @@ export default function AddPhotoModal() {
   useEffect(() => {
     if (isFixedTrip) return;
 
-    const loadTrips = async () => {
-      try {
-        const data = await API.getTrips();
-        setTrips(Array.isArray(data) ? data : []);
-      } catch (e) {
-        console.error('Failed to load trips', e);
-        setTrips([]);
-      }
-    };
-
-    loadTrips();
+    API.getTrips().then(data => {
+      setTrips(Array.isArray(data) ? data : []);
+    });
   }, [isFixedTrip]);
 
-  const pickImage = async () => {
+  const addPhoto = async (fromCamera: boolean) => {
     const targetTripId = isFixedTrip ? tripId : selectedTrip?.id;
-
     if (!targetTripId) {
-      Alert.alert('Erreur', 'Sélectionne un voyage');
+      Alert.alert("Erreur", "Sélectionne un voyage");
       return;
     }
 
-    const { status } =
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
+    const permission = fromCamera
+      ? await ImagePicker.requestCameraPermissionsAsync()
+      : await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-    if (status !== 'granted') {
-      Alert.alert('Permission refusée');
+    if (permission.status !== "granted") {
+      Alert.alert("Permission refusée");
       return;
     }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      quality: 1,
-    });
+    const result = fromCamera
+      ? await ImagePicker.launchCameraAsync({ quality: 1 })
+      : await ImagePicker.launchImageLibraryAsync({ quality: 1 });
 
     if (result.canceled) return;
 
     try {
       setLoading(true);
 
-      const imageUri = result.assets[0].uri;
-      const uploadedUrl = await API.uploadImage(imageUri);
-
+      const uri = result.assets[0].uri;
+      const uploadedUrl = await API.uploadImage(uri);
       await API.addPhotoToTrip(targetTripId, uploadedUrl);
 
-      Alert.alert('Succès', 'Photo ajoutée', [
-        { text: 'OK', onPress: () => router.back() },
+      Alert.alert("Succès", "Photo ajoutée", [
+        { text: "OK", onPress: () => router.back() },
       ]);
-    } catch (e) {
-      console.error(e);
-      Alert.alert('Erreur', 'Impossible d’ajouter la photo');
+    } catch {
+      Alert.alert("Erreur", "Impossible d’ajouter la photo");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Add Photo</Text>
-
-      {/* Fixed trip mode */}
-      {isFixedTrip && (
-        <Text style={styles.infoText}>
-          Ajout de photo au voyage sélectionné
-        </Text>
-      )}
-
-      {/* Generic mode: select trip */}
-      {!isFixedTrip && trips.length === 0 && (
-        <Text style={styles.emptyText}>
-          Aucun voyage disponible
-        </Text>
-      )}
+    <SafeAreaView>
+      <Text>Add Photo</Text>
 
       {!isFixedTrip &&
         trips.map(trip => (
           <TouchableOpacity
             key={trip.id}
-            style={[
-              styles.tripItem,
-              selectedTrip?.id === trip.id && styles.selected,
-            ]}
             onPress={() => setSelectedTrip(trip)}
           >
-            <Text style={styles.tripTitle}>{trip.title}</Text>
+            <Text>{trip.title}</Text>
           </TouchableOpacity>
         ))}
 
-      {/* Action */}
-      <TouchableOpacity
-        style={[styles.button, loading && styles.disabled]}
-        onPress={pickImage}
-        disabled={loading}
-      >
-        <Ionicons name="image-outline" size={24} color="#fff" />
-        <Text style={styles.buttonText}>
-          {loading ? 'Upload...' : 'Choose Photo'}
-        </Text>
+      <TouchableOpacity onPress={() => addPhoto(false)} disabled={loading}>
+        <Ionicons name="image-outline" size={24} />
+        <Text>Galerie</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity onPress={() => addPhoto(true)} disabled={loading}>
+        <Ionicons name="camera-outline" size={24} />
+        <Text>Caméra</Text>
       </TouchableOpacity>
     </SafeAreaView>
   );
