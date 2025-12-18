@@ -184,7 +184,7 @@ export default function TripsScreen() {
       <LinearGradient colors={['#a855f7', '#ec4899']} style={styles.header}>
         <View style={styles.headerTop}>
           <Text style={styles.placeholder}></Text>
-          <Text style={styles.headerTitle}>Trips Calendar</Text>
+          <Text style={styles.headerTitle}>My Trips</Text>
           <Text style={styles.placeholder}></Text>
         </View>
       </LinearGradient>

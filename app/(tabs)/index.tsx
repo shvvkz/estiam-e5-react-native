@@ -136,7 +136,7 @@ export default function HomeScreen() {
         <LinearGradient colors={['#a855f7', '#ec4899']} style={styles.header}>
           <View style={styles.headerTop}>
             <View>
-              <Text style={styles.greentingText}>Hello</Text>
+              <Text style={styles.greetingText}>Hello</Text>
               <Text style={styles.firstnameText}>{user.user?.name || "Utilisateur"}!</Text>
             </View>
             <TouchableOpacity
@@ -158,11 +158,11 @@ export default function HomeScreen() {
               { label: 'Photos', value: stats.photos, icon: 'camera-outline' },
               { label: 'Countries', value: stats.countries, icon: 'globe-outline' },
             ].map((stat, index) => (
-                <View key={index} style={styles.statCard}>
+              <View key={index} style={styles.statCard}>
                 <Ionicons name={stat.icon as keyof typeof Ionicons.glyphMap} color="#fff" style={styles.statIcon} />
                 <Text style={styles.statValue}>{stat.value}</Text>
                 <Text style={styles.statLabel}>{stat.label}</Text>
-                </View>
+              </View>
             ))}
           </View>
         </LinearGradient>
@@ -176,6 +176,14 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
+        {upcomingTrips.length === 0 && (
+          <View style={styles.emptySection}>
+            <Text style={styles.emptySectionText}>
+              No upcoming trips
+            </Text>
+          </View>
+        )}
 
         {upcomingTrips.map((trip) => {
 
@@ -222,7 +230,7 @@ export default function HomeScreen() {
 
         {/* Quick Actions */}
         <View style={styles.section}>
-          <Text style={{ ...styles.sectionTitle, paddingHorizontal: 12 }}>
+          <Text style={{ ...styles.sectionTitle, paddingHorizontal: 24 }}>
             Quick Actions
           </Text>
           <View style={styles.quickActionsGrid}>
@@ -246,7 +254,7 @@ export default function HomeScreen() {
               </LinearGradient>
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => router.push('/trips')}>
+            <TouchableOpacity onPress={() => router.push('/trips/map')}>
               <LinearGradient
                 colors={['#10b981', '#059669']}
                 style={styles.quickActionCard}
@@ -260,11 +268,19 @@ export default function HomeScreen() {
 
         {/* Recent Activity */}
         <View style={styles.section}>
-          <View style={{ paddingHorizontal: 12 }}>
+          <View style={{ paddingHorizontal: 24 }}>
             <Text style={styles.sectionTitle}>Recent Activity</Text>
 
+            {activities.length === 0 && (
+              <View style={styles.emptySection}>
+                <Text style={styles.emptySectionText}>
+                  No recent activity
+                </Text>
+              </View>
+            )}
+
             {activities.map((activity, idx) => (
-                <View style={styles.activityCard} key={idx}>
+              <View style={styles.activityCard} key={idx}>
                 <Ionicons
                   name={activity.icon as keyof typeof Ionicons.glyphMap}
                   size={24}
@@ -275,7 +291,7 @@ export default function HomeScreen() {
                   <Text style={styles.activityText}>{activity.text}</Text>
                   <Text style={styles.activityTime}>{activity.time}</Text>
                 </View>
-                </View>
+              </View>
             ))}
           </View>
         </View>
@@ -299,7 +315,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 24,
   },
-  greentingText: { color: 'rgba(255,255,255,0.8)', fontSize: 24 },
+  placeholder: {
+    width: 40,
+  },
+  greetingText: { color: 'rgba(255,255,255,0.8)', fontSize: 24 },
   firstnameText: { color: '#fff', fontSize: 28, fontWeight: 'bold' },
   notificationBtn: {
     width: 40,
@@ -374,4 +393,15 @@ const styles = StyleSheet.create({
   },
   activityText: { color: '#111827' },
   activityTime: { color: '#9ca3af', fontSize: 12 },
+  emptySection: {
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+
+  emptySectionText: {
+    color: '#9ca3af',
+    fontSize: 14,
+    fontStyle: 'italic',
+  },
+
 });
